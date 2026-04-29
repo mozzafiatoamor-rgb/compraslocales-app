@@ -192,7 +192,7 @@ const Sheets={
   async batchAppend(items){const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:items})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
   async loadAll(){S.loading=true;render();try{
     const [c,pv,cp,fd,bt,pd]=await Promise.all([
-      this.read('\u{1F6D2} Cat\u00e1logo','A2:F200'),
+      this.read('\u{1F6D2} Cat\u00e1logo','A2:F1000'),
       this.read('\u{1F3EA} Proveedores','A2:D50'),
       this.read('\u{1F9FE} Compras','A2:L1000'),
       this.read('\u{1F4B5} Fondos','A2:G500'),
