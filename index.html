@@ -197,7 +197,7 @@ const Sheets={
       this.read('\u{1F9FE} Compras','A2:L1000'),
       this.read('\u{1F4B5} Fondos','A2:G500'),
       this.read('\u{1F4DC} Bit\u00e1cora','A2:F500'),
-      this.read('\u{1F4CB} Pedidos','A2:K500')
+      this.read('\u{1F4CB} Pedidos','A2:K1000')
     ]);
     S.catalogo=c.map((r,i)=>({id:r[0]||'',categoria:r[1]||'',producto:r[2]||'',unidad:r[3]||'',precioRef:parseFloat(r[4])||0,activo:(r[5]||'SI').toUpperCase(),_row:i+2})).filter(p=>p.producto&&p.activo!=='NO');
     S.proveedores=pv.map((r,i)=>({id:r[0]||'',nombre:r[1]||'',tipo:r[2]||'',activo:(r[3]||'SI').toUpperCase(),_row:i+2})).filter(p=>p.nombre&&p.activo!=='NO');
