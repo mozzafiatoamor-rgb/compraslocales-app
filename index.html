@@ -231,32 +231,33 @@ const SyncQueue={
     const q=this.queue;q.push(...items.map(function(it){return{...it,_ts:Date.now()}}));this.queue=q;
     this.process(onDone);this.updateBadge()},
   async process(onDone){
-    if(this.processing)return;const q=this.queue;if(!q.length){this.updateBadge();return}
+    if(this.processing)return;
+    const q=this.queue;
+    if(!q.length){this.updateBadge();if(onDone)onDone(true);return}
     this.processing=true;this.updateBadge();
-    const batch=q.splice(0,50);this.queue=q;
+    // Procesa de uno en uno: el item se elimina del queue SOLO despues de confirmacion
+    // Esto evita duplicados cuando la red falla despues de que el servidor ya escribio
+    const item=this.queue[0];
     try{
-      const grouped={};batch.forEach(function(it){const k=it.sheet;if(!grouped[k])grouped[k]=[];grouped[k].push(it.values)});
-      const items=Object.keys(grouped).map(function(sh){return{sheet:sh,rows:grouped[sh]}});
-      try{await Sheets.batchAppend(items)}catch(batchErr){
-        console.warn('batchAppend falló, usando append individual:',batchErr);
-        for(const it of batch){await Sheets.append(it.sheet,it.values)}
+      await Sheets.append(item.sheet,item.values);
+      // Exito: ahora si eliminamos del queue
+      const q2=this.queue;q2.shift();this.queue=q2;
+      if(item._priceUpdate){
+        try{await Sheets.updatePrice(item._priceUpdate.producto,item._priceUpdate.precio)}catch(e){}
       }
       _syncRetryCount=0;
-      // Process price updates in parallel
-      const priceUpdates=batch.filter(function(it){return it._priceUpdate});
-      if(priceUpdates.length)await Promise.allSettled(priceUpdates.map(function(it){return Sheets.updatePrice(it._priceUpdate.producto,it._priceUpdate.precio)}));
-      this.updateBadge();if(onDone)onDone(true);
-      if(this.queue.length)this.process()
+      this.updateBadge();
+      this.processing=false;
+      if(this.queue.length){this.process(onDone)}else{if(onDone)onDone(true)}
     }catch(e){
       console.error('SyncQueue error',e);
       toast('\u26a0\ufe0f Sync: '+e.message,1);
       _syncRetryCount++;const delay=Math.min(2000*Math.pow(2,_syncRetryCount),30000);
-      const q2=this.queue;q2.unshift(...batch);this.queue=q2;
       this.updateBadge();
       if(onDone)onDone(false);
       setTimeout(()=>{this.processing=false;this.process()},delay);return
     }
-    this.processing=false},
+  },
   get pending(){return this.queue.length},
   updateBadge(){const dot=document.querySelector('.status-dot');if(!dot)return;const n=this.pending;
     if(n>0){dot.style.background='var(--yellow)';dot.title=n+' pendientes de sync'}
