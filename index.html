@@ -169,6 +169,7 @@ html,body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text
 .rpt-detail-item{padding:6px 14px;font-size:12px;color:var(--text2);display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.03)}
 .rpt-detail-item:last-child{border:none}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="toast" id="toast"></div>
@@ -305,7 +306,7 @@ function acGetVal(id){return _acSelected[id]||''}
 function acInputFor(id){if(id==='fCP'||id==='acP')acInput(id,S.catalogo,p=>p.producto);else if(id==='fCPv'||id==='ckProv')acInput(id,S.proveedores,p=>p.nombre);else if(id==='fNProd')acInput(id,S.catalogo,p=>p.producto)}
 document.addEventListener('click',function(e){document.querySelectorAll('.autocomplete-list.open').forEach(l=>{if(!l.parentElement.contains(e.target))l.className='autocomplete-list'})})
 
-function render(){const a=document.getElementById('app');if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else a.innerHTML=renderMain()}
+function render(){const a=document.getElementById('app');if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
 
 function renderSetup(){
   if(S.setupStep===1)return'<div class="setup-screen"><div class="step-indicator"><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div></div><img src="'+LOGO+'" class="setup-logo" onerror="this.style.display=\'none\'"><div class="setup-title">\u{1F6D2} Compras</div><div class="setup-desc">ID del Google Sheet</div><input class="setup-input" id="si" placeholder="Sheet ID" value="'+S.sheetId+'" oninput="S.sheetId=this.value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId" onpaste="setTimeout(function(){S.sheetId=document.getElementById(\'si\').value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId},100)" onchange="S.sheetId=this.value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId"><div style="width:100%;max-width:360px"><button class="btn btn-primary" id="btnN1" onclick="S.setupStep=2;render()" '+(S.sheetId?'':'disabled')+'>Siguiente \u2192</button></div></div>';
@@ -528,6 +529,44 @@ function rptInitDates(){if(!S.reportDateFrom||!S.reportDateTo){var presets=rptGe
 
 var RPT_COLORS=['#e07840','#34d399','#60a5fa','#fbbf24','#f87171','#22d3ee','#fb923c','#a78bfa','#f472b6','#4ade80','#38bdf8','#facc15'];
 function rptColor(i){return RPT_COLORS[i%RPT_COLORS.length]}
+var _rptCharts={};
+function _mkChart(id,cfg){if(_rptCharts[id]){_rptCharts[id].destroy();delete _rptCharts[id]}var el=document.getElementById(id);if(!el||typeof Chart==='undefined')return;try{_rptCharts[id]=new Chart(el,cfg)}catch(e){console.warn('chart err',id,e)}}
+function initRptCharts(){
+  if(S.tab!=='reportes'||!S._rptData||typeof Chart==='undefined')return;
+  var D=S._rptData;
+  var sec=S.rptSection||'general';
+  var gc='rgba(255,255,255,.06)';var tc='#a89078';
+  var ttCb={callbacks:{label:function(ctx){return' '+fmt$(ctx.raw||0)}}};
+  var basePlugins={legend:{display:false},tooltip:ttCb};
+  var noGrid={display:false};
+  if(sec==='general'){
+    if(D.catSorted.length){
+      var cs8=D.catSorted.slice(0,8);
+      _mkChart('rptCatPie',{type:'doughnut',data:{labels:cs8.map(function(e){return e[0]}),datasets:[{data:cs8.map(function(e){return e[1].total}),backgroundColor:RPT_COLORS.slice(0,8),borderWidth:2,borderColor:'#2a1e16',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:tc,font:{size:10},boxWidth:10,padding:6}},tooltip:ttCb}}});
+    }
+    if(D.diaSorted.length){
+      var dias=D.diaSorted.slice().reverse().slice(-14);
+      _mkChart('rptDiaLine',{type:'line',data:{labels:dias.map(function(e){return e[0].substring(0,5)}),datasets:[{data:dias.map(function(e){return e[1].total}),borderColor:'#e07840',backgroundColor:'rgba(224,120,64,.12)',fill:true,tension:0.35,pointRadius:3,pointHoverRadius:5,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:basePlugins,scales:{x:{ticks:{color:tc,font:{size:9}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:9},callback:function(v){return '$'+Math.round(v)}},grid:{color:gc}}}}});
+    }
+  }
+  if(sec==='diario'){
+    if(D.diaSorted.length){
+      var dias2=D.diaSorted.slice().reverse();
+      _mkChart('rptDiaBars',{type:'bar',data:{labels:dias2.map(function(e){return e[0].substring(0,5)}),datasets:[{data:dias2.map(function(e){return e[1].total}),backgroundColor:dias2.map(function(e,i){return RPT_COLORS[i%RPT_COLORS.length]}),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:basePlugins,scales:{x:{ticks:{color:tc,font:{size:9},maxRotation:45},grid:noGrid},y:{ticks:{color:tc,font:{size:9},callback:function(v){return '$'+Math.round(v)}},grid:{color:gc}}}}});
+    }
+  }
+  if(sec==='categorias'){
+    if(D.catSorted.length){
+      _mkChart('rptCatBars',{type:'bar',data:{labels:D.catSorted.map(function(e){return e[0]}),datasets:[{data:D.catSorted.map(function(e){return e[1].total}),backgroundColor:D.catSorted.map(function(e,i){return RPT_COLORS[i%RPT_COLORS.length]}),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:basePlugins,scales:{x:{ticks:{color:tc,font:{size:9},callback:function(v){return '$'+Math.round(v)}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11}},grid:noGrid}}}});
+    }
+  }
+  if(sec==='proveedores'){
+    if(D.provSorted.length){
+      var ps8=D.provSorted.slice(0,8);
+      _mkChart('rptProvPie',{type:'doughnut',data:{labels:ps8.map(function(e){return e[0]}),datasets:[{data:ps8.map(function(e){return e[1].total}),backgroundColor:RPT_COLORS.slice(0,8),borderWidth:2,borderColor:'#2a1e16',hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:tc,font:{size:10},boxWidth:10,padding:6}},tooltip:ttCb}}});
+    }
+  }
+}
 
 function renderReportes(){
   rptInitDates();
@@ -620,6 +659,8 @@ function renderReportes(){
     html+='<div class="stat-box yellow"><div class="stat-number">'+fmt$(promedio)+'</div><div class="stat-label">Promedio/Compra</div></div>';
     html+='<div class="stat-box cyan"><div class="stat-number">'+pedidosPend.length+'</div><div class="stat-label">Pedidos Pend.</div></div></div>';
     if(totalDevuelto>0){html+='<div class="cuadre-box ok"><div class="cuadre-row"><span>Devuelto</span><span class="cr-val" style="color:var(--blue)">'+fmt$(totalDevuelto)+'</span></div></div>'}
+    if(catSorted.length>0){html+='<div style="position:relative;height:220px;margin:14px 0;background:var(--surface);border-radius:14px;padding:10px"><canvas id="rptCatPie"></canvas></div>'}
+    if(diaSorted.length>1){html+='<div style="font-size:11px;font-weight:700;color:var(--text2);margin:4px 0 6px;letter-spacing:.5px">TENDENCIA</div><div style="position:relative;height:110px;margin-bottom:14px;background:var(--surface);border-radius:14px;padding:10px"><canvas id="rptDiaLine"></canvas></div>'}
     if(catSorted.length>0){var topCat=catSorted[0];var topCatPct=totalGastado>0?Math.round(topCat[1].total/totalGastado*100):0;html+='<div class="rpt-insight"><div class="rpt-insight-title">\u{1F4A1} Insight</div>La categoria <strong>'+topCat[0]+'</strong> representa el <strong>'+topCatPct+'%</strong> del gasto total ('+fmt$(topCat[1].total)+'). ';if(prodSorted.length>0)html+='El producto con mayor gasto es <strong>'+prodSorted[0][0]+'</strong> con '+fmt$(prodSorted[0][1].total)+'. ';if(pedidosPend.length>0)html+='Hay <strong>'+pedidosPend.length+' pedidos</strong> sin comprar.';html+='</div>'}
     html+='<div class="rpt-section"><div class="rpt-section-title">\u{1F4E6} Top Categorias</div>';
     catSorted.slice(0,5).forEach(function(entry,i){var pct=totalGastado>0?Math.round(entry[1].total/totalGastado*100):0;html+='<div class="rpt-bar-row"><div class="rpt-bar-info"><div class="rpt-bar-name">'+entry[0]+'</div><div class="rpt-bar-sub">'+entry[1].items+' compras</div><div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:'+pct+'%;background:'+rptColor(i)+'"></div></div></div><div class="rpt-bar-vals"><div class="rpt-bar-amount" style="color:'+rptColor(i)+'">'+fmt$(entry[1].total)+'</div><div class="rpt-bar-pct">'+pct+'%</div></div></div>'});
@@ -630,7 +671,7 @@ function renderReportes(){
   if(sec==='categorias'){
     html+='<div class="rpt-section">';
     if(catSorted.length===0){html+='<div class="rpt-empty">\u{1F4E6} Sin compras en este periodo</div>'}
-    else{catSorted.forEach(function(entry,i){var cat=entry[0];var d=entry[1];var pct=totalGastado>0?Math.round(d.total/totalGastado*100):0;var prods=Object.entries(d.productos).sort(function(a,b){return b[1].total-a[1].total});var key='cat_'+i;var isOpen=S._rptOpenDetails[key];
+    else{var catH=Math.min(catSorted.length,8)*38+50;html+='<div style="position:relative;height:'+catH+'px;margin-bottom:16px;background:var(--surface);border-radius:14px;padding:10px"><canvas id="rptCatBars"></canvas></div>';catSorted.forEach(function(entry,i){var cat=entry[0];var d=entry[1];var pct=totalGastado>0?Math.round(d.total/totalGastado*100):0;var prods=Object.entries(d.productos).sort(function(a,b){return b[1].total-a[1].total});var key='cat_'+i;var isOpen=S._rptOpenDetails[key];
       html+='<div class="rpt-bar-row" style="flex-wrap:wrap;cursor:pointer" onclick="rptToggleDetail(\''+key+'\')">';
       html+='<div style="width:28px;height:28px;border-radius:8px;background:'+rptColor(i)+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1a120e;flex-shrink:0">'+(i+1)+'</div>';
       html+='<div class="rpt-bar-info"><div class="rpt-bar-name">'+cat+'</div><div class="rpt-bar-sub">'+d.items+' compras &middot; '+prods.length+' productos</div><div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:'+pct+'%;background:'+rptColor(i)+'"></div></div></div>';
@@ -672,7 +713,7 @@ function renderReportes(){
   if(sec==='proveedores'){
     html+='<div class="rpt-section">';
     if(provSorted.length===0){html+='<div class="rpt-empty">\u{1F3EA} Sin datos</div>'}
-    else{html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+provSorted.length+' proveedores</div>';
+    else{html+='<div style="position:relative;height:220px;margin-bottom:14px;background:var(--surface);border-radius:14px;padding:10px"><canvas id="rptProvPie"></canvas></div>';html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+provSorted.length+' proveedores</div>';
       provSorted.forEach(function(entry,i){var name=entry[0];var d=entry[1];var pct=totalGastado>0?Math.round(d.total/totalGastado*100):0;
         html+='<div class="rpt-bar-row"><div class="rpt-rank '+(i<3?'top3':'')+'">'+(i+1)+'</div><div class="rpt-bar-info"><div class="rpt-bar-name">'+name+'</div><div class="rpt-bar-sub">'+d.items+' compras &middot; '+pct+'%</div><div class="rpt-bar-track"><div class="rpt-bar-fill" style="width:'+Math.round(d.total/maxProv*100)+'%;background:'+rptColor(i)+'"></div></div></div><div class="rpt-bar-vals"><div class="rpt-bar-amount">'+fmt$(d.total)+'</div><div class="rpt-bar-pct">'+pct+'%</div></div></div>'})}
     html+='</div>';
@@ -693,7 +734,7 @@ function renderReportes(){
   if(sec==='diario'){
     html+='<div class="rpt-section">';
     if(diaSorted.length===0){html+='<div class="rpt-empty">\u{1F4C5} Sin datos</div>'}
-    else{html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+diaSorted.length+' dias con actividad</div>';
+    else{html+='<div style="position:relative;height:200px;margin-bottom:14px;background:var(--surface);border-radius:14px;padding:10px"><canvas id="rptDiaBars"></canvas></div>';html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+diaSorted.length+' d\u00edas con actividad</div>';
       diaSorted.forEach(function(entry,i){var fecha=entry[0];var d=entry[1];var pct=maxDia>0?Math.round(d.total/maxDia*100):0;var key='dia_'+i;var isOpen=S._rptOpenDetails[key];
         var dayCompras=compras.filter(function(c){return c.fecha===fecha});
         html+='<div class="rpt-bar-row" style="flex-wrap:wrap;cursor:pointer" onclick="rptToggleDetail(\''+key+'\')">';
@@ -705,6 +746,7 @@ function renderReportes(){
     html+='</div>';
   }
 
+  S._rptData={catSorted:catSorted,prodSorted:prodSorted,diaSorted:diaSorted,provSorted:provSorted,compSorted:compSorted,totalGastado:totalGastado,totalAsignado:totalAsignado};
   return html;
 }
 
