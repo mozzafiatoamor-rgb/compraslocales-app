@@ -668,6 +668,16 @@ function renderReportes(){
 
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="card-title" style="margin:0">\u{1F4CA} Reportes</span><span style="font-size:11px;color:var(--text2)">'+numCompras+' compras</span></div>';
 
+  if(canReport()){
+    var rango=getRangoSemana();
+    var hoyStr=today();
+    html+='<div style="background:var(--surface2);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
+    html+='<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">\u{1F4E4} Generar Reporte</div>';
+    html+='<button class="btn" style="background:#25d366;color:#fff;width:100%;border-radius:12px;padding:12px;font-size:14px;font-weight:700;margin-bottom:8px;border:none;cursor:pointer" onclick="generarReporteDiarioWA(\''+hoyStr+'\')">\u{1F4F2} Reporte Diario (WhatsApp)</button>';
+    html+='<button class="btn btn-primary" style="width:100%;border-radius:12px;padding:12px;font-size:14px;font-weight:700;border:none;cursor:pointer" onclick="generarReporteSemanalPDF()">\u{1F4C4} Reporte Semanal PDF'+(rango?' ('+rango.label+')':'')+' </button>';
+    html+='</div>';
+  }
+
   html+='<div class="rpt-date-bar">';
   Object.keys(presets).forEach(function(key){html+='<button class="rpt-date-btn '+(S.rptPreset===key?'active':'')+'" onclick="rptSetPreset(\''+key+'\')">'+presets[key].label+'</button>'});
   html+='</div>';
