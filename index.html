@@ -670,6 +670,17 @@ function renderReportes(){
 
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span class="card-title" style="margin:0">\u{1F4CA} Reportes</span><span style="font-size:11px;color:var(--text2)">'+numCompras+' compras</span></div>';
 
+  html+='<div style="position:relative;margin-bottom:14px"><input id="rptProdSrch" type="text" class="form-input" style="padding-left:40px;padding-right:36px;border-radius:12px;font-size:15px;height:46px" placeholder="\u{1F50D} Buscar art\u00edculo..." value="'+(S.rptProdSearch||'').replace(/"/g,'&quot;')+'" oninput="S.rptProdSearch=this.value;_frS()"><span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px;pointer-events:none">\u{1F50D}</span>';
+  if(S.rptProdSearch)html+='<button style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--surface2);border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:2px 8px;border-radius:8px" onclick="S.rptProdSearch=\'\';_frS()">&times;</button>';
+  html+='</div>';
+  S._rptData={catSorted:catSorted,prodSorted:prodSorted,diaSorted:diaSorted,provSorted:provSorted,compSorted:compSorted,totalGastado:totalGastado,totalAsignado:totalAsignado};
+  if(S.rptProdSearch){
+    html+='<div id="rptSrchRes">'+_rptSrchContent(compras,prodSorted,S.rptProdSearch)+'</div>';
+    return html;
+  }
+  html+='<div id="rptSrchRes" style="display:none"></div>';
+
+
   if(canReport()){
     var hoyStr=today();
     var _pdfLbl=(S.reportDateFrom&&S.reportDateTo)?(S.reportDateFrom+' – '+S.reportDateTo):'Semana actual';
@@ -694,8 +705,7 @@ function renderReportes(){
   html+='<button class="tab-pill '+(sec==='personas'?'active':'')+'" onclick="S.rptSection=\'personas\';render()">\u{1F464} Personas</button>';
   html+='<button class="tab-pill '+(sec==='proveedores'?'active':'')+'" onclick="S.rptSection=\'proveedores\';render()">\u{1F3EA} Proveedores</button>';
   html+='<button class="tab-pill '+(sec==='pendientes'?'active':'')+'" onclick="S.rptSection=\'pendientes\';render()">\u26A0\uFE0F Sin Comprar</button>';
-  html+='<button class="tab-pill '+(sec==='diario'?'active':'')+'" onclick="S.rptSection=\'diario\';render()">\u{1F4C5} Por Dia</button>';
-  html+='<button class="tab-pill '+(sec==='busqueda'?'active':'')+'" onclick="S.rptSection=\'busqueda\';render()">\u{1F50D} B\u00fasqueda</button>';
+  html+='<button class="tab-pill '+(sec==='diario'?'active':'')+'" onclick="S.rptSection=\'diario\';render()">\u{1F4C5} Por Dia</button>';ender()">\u{1F50D} B\u00fasqueda</button>';
   html+='</div>';
 
   if(numCompras===0&&pedidos.length===0){
@@ -798,15 +808,6 @@ function renderReportes(){
     html+='</div>';
   }
 
-  if(sec==='busqueda'){
-    html+='<div class="rpt-section">';
-    html+='<div style="position:relative;margin-bottom:12px">';
-    html+='<input id="rptProdSrch" type="text" class="form-input" style="padding-left:36px" placeholder="\u{1F50D} Buscar art\u00edculo..." value="'+(S.rptProdSearch||'').replace(/"/g,'&quot;')+'" oninput="S.rptProdSearch=this.value;_frS()">';
-    html+='<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%)">\u{1F50D}</span>';
-    if(S.rptProdSearch)html+='<button style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer" onclick="S.rptProdSearch=\'\';_frS()">&times;</button>';
-    html+='</div>';
-    html+='<div id="rptSrchRes">'+_rptSrchContent(compras,prodSorted,S.rptProdSearch||'')+'</div>';
-    html+='</div>';
   }
 
 
@@ -851,8 +852,9 @@ function _rptSrchContent(compras,prodSorted,pq){
   if(!pq){
     if(!prodSorted.length){return'<div class="rpt-empty">Sin compras en este periodo</div>';}
     html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px;letter-spacing:.5px">⚡ CLICK PARA VER HISTORIAL</div>';
+    window._rptPL=prodSorted.slice(0,20).map(function(e){return e[0]});
     prodSorted.slice(0,20).forEach(function(e,i){
-      html+='<div class="rpt-bar-row" style="cursor:pointer;padding:9px 10px;border-radius:10px;margin-bottom:4px;background:var(--surface)" data-prod="'+e[0].replace(/"/g,'&quot;')+'" onclick="S.rptProdSearch=this.dataset.prod;_frS()">'+
+      html+='<div class="rpt-bar-row" style="cursor:pointer;padding:9px 10px;border-radius:10px;margin-bottom:4px;background:var(--surface)" onclick="_selProd('+(i)+')">'+
         '<div class="rpt-rank '+(i<3?'top3':'')+'">'+String(i+1)+'</div>'+
         '<div class="rpt-bar-info"><div class="rpt-bar-name">'+e[0]+'</div>'+
         '<div class="rpt-bar-sub">'+e[1].cat+' · '+e[1].compras+' compras · prom '+fmt$(e[1].qty>0?e[1].total/e[1].qty:0)+'/'+e[1].unit+'</div>'+
@@ -870,9 +872,10 @@ function _rptSrchContent(compras,prodSorted,pq){
   var names=Object.keys(uniqueProds).sort(function(a,b){return uniqueProds[b].total-uniqueProds[a].total});
   if(names.length>1){
     html+='<div style="font-size:11px;color:var(--text2);margin-bottom:10px">'+names.length+' artículos · click para ver detalle</div>';
+    window._rptPL=names;
     names.forEach(function(name,i){
       var d=uniqueProds[name];
-      html+='<div class="rpt-bar-row" style="cursor:pointer;padding:9px 10px;border-radius:10px;margin-bottom:4px;background:var(--surface)" data-prod="'+name.replace(/"/g,'&quot;')+'" onclick="S.rptProdSearch=this.dataset.prod;_frS()">'+
+      html+='<div class="rpt-bar-row" style="cursor:pointer;padding:9px 10px;border-radius:10px;margin-bottom:4px;background:var(--surface)" onclick="_selProd('+(i)+')">'+
         '<div class="rpt-rank '+(i<3?'top3':'')+'">'+String(i+1)+'</div>'+
         '<div class="rpt-bar-info"><div class="rpt-bar-name">'+name+'</div>'+
         '<div class="rpt-bar-sub">'+d.cat+' · '+d.cnt+' compras · prom '+fmt$(d.total/d.cnt)+'</div></div>'+
@@ -921,6 +924,7 @@ function _rptSrchContent(compras,prodSorted,pq){
   return html;
 }
 
+function _selProd(i){var pl=window._rptPL||[];if(i>=0&&i<pl.length)S.rptProdSearch=pl[i];_frS();}
 function _frS(){
   var el=document.getElementById('rptSrchRes');
   if(!el){render();return;}
@@ -928,6 +932,7 @@ function _frS(){
   if(si)S.rptProdSearch=si.value;
   var D=S._rptData;
   var data=rptGetFiltered();
-  el.innerHTML=_rptSrchContent(data.compras,D?D.prodSorted:[],S.rptProdSearch||'');
+  el.style.display=S.rptProdSearch?'':'none';
+  el.innerHTML=S.rptProdSearch?_rptSrchContent(data.compras,D?D.prodSorted:[],S.rptProdSearch):'';
 }
 
