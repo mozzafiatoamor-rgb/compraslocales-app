@@ -705,7 +705,7 @@ function renderReportes(){
   html+='<button class="tab-pill '+(sec==='personas'?'active':'')+'" onclick="S.rptSection=\'personas\';render()">\u{1F464} Personas</button>';
   html+='<button class="tab-pill '+(sec==='proveedores'?'active':'')+'" onclick="S.rptSection=\'proveedores\';render()">\u{1F3EA} Proveedores</button>';
   html+='<button class="tab-pill '+(sec==='pendientes'?'active':'')+'" onclick="S.rptSection=\'pendientes\';render()">\u26A0\uFE0F Sin Comprar</button>';
-  html+='<button class="tab-pill '+(sec==='diario'?'active':'')+'" onclick="S.rptSection=\'diario\';render()">\u{1F4C5} Por Dia</button>';ender()">\u{1F50D} B\u00fasqueda</button>';
+  html+='<button class="tab-pill '+(sec==='diario'?'active':'')+'" onclick="S.rptSection=\'diario\';render()">\u{1F4C5} Por Dia</button>';
   html+='</div>';
 
   if(numCompras===0&&pedidos.length===0){
@@ -808,8 +808,6 @@ function renderReportes(){
     html+='</div>';
   }
 
-  }
-
 
   S._rptData={catSorted:catSorted,prodSorted:prodSorted,diaSorted:diaSorted,provSorted:provSorted,compSorted:compSorted,totalGastado:totalGastado,totalAsignado:totalAsignado};
   return html;
@@ -842,10 +840,6 @@ async function _bulkDelete(titulo){var rows=[];S.pedidos.forEach(function(p){if(
 
 (async function(){if(S.sheetId&&S.apiKey&&SCRIPT_URL){const su=localStorage.getItem('currentUser_compras');if(su){try{S.currentUser=JSON.parse(su);S.screen='main';S.connected=true;render();await Sheets.loadUsers();const ok=S.usuarios.find(function(u){return u.usuario===S.currentUser.usuario});if(!ok){toast('Cuenta deshabilitada',1);logout();return}await Sheets.loadAll()}catch(e){S.screen='login';render()}}else{S.screen='login';S.connected=true;await Sheets.loadUsers();render()}}else{render()}})();
 
-</script>
-</body>
-</html>
-function handleCkPvChange(sel){if(sel.value!=='__nuevo__')return;var nm=prompt('Nombre del nuevo proveedor:','');if(!nm||!nm.trim()){sel.value='';return}nm=nm.trim().replace(/\b\w/g,function(c){return c.toUpperCase()});if(S.proveedores.some(function(p){return p.nombre.toLowerCase()===nm.toLowerCase()})){sel.value=nm;toast(nm+' ya existe, seleccionado');return}var id=nextId('PV',S.proveedores);var t=now();S.proveedores.push({id:id,nombre:nm,tipo:'Local',activo:'SI',_row:9999});SyncQueue.add([{sheet:'\u{1F3EA} Proveedores',values:[id,nm,'Local','SI']},{sheet:'\u{1F4DC} Bit\u00e1cora',values:[t.date,t.time,uName(),'Proveedor agregado',nm,'proveedor']}]);var opt=document.createElement('option');opt.value=nm;opt.text=nm;opt.selected=true;sel.insertBefore(opt,sel.querySelector('option[value="__nuevo__"]'));toast('\u2795 '+nm+' agregado');}
 
 function _rptSrchContent(compras,prodSorted,pq){
   var html='';
@@ -936,3 +930,6 @@ function _frS(){
   el.innerHTML=S.rptProdSearch?_rptSrchContent(data.compras,D?D.prodSorted:[],S.rptProdSearch):'';
 }
 
+</script>
+</body>
+</html>
