@@ -320,7 +320,7 @@ function acGetVal(id){return _acSelected[id]||''}
 function acAddNewProv(inputId,nombre){if(!nombre.trim()){toast('Escribe el nombre del proveedor',1);return}var nm=nombre.trim();nm=nm.replace(/\b\w/g,function(c){return c.toUpperCase()});if(S.proveedores.some(function(p){return p.nombre.toLowerCase()===nm.toLowerCase()})){acPick(inputId,nm);toast(nm+' ya existe, seleccionado');return}var id=nextId('PV',S.proveedores);var t=now();S.proveedores.push({id:id,nombre:nm,tipo:'Local',activo:'SI',_row:9999});SyncQueue.add([{sheet:'\u{1F3EA} Proveedores',values:[id,nm,'Local','SI']},{sheet:'\u{1F4DC} Bit\u00e1cora',values:[t.date,t.time,uName(),'Proveedor agregado',nm,'proveedor']}]);acPick(inputId,nm);toast('\u2795 '+nm+' agregado como proveedor');}
 function acOpenAddProd(inputId,nombre){_acAddProdSource=inputId;_acAddProdReturnModal=modalType||'';openModal('addProduct');setTimeout(function(){var fn=document.getElementById('fNPN');if(fn){fn.value=nombre;previewProdName();checkDupProd(nombre);}},50);}
 function handleCkPvChange(sel){if(sel.value!=='__nuevo__')return;var nm=prompt('Nombre del nuevo proveedor:');if(!nm||!nm.trim()){sel.value='';return}nm=nm.trim().replace(/\b\w/g,function(c){return c.toUpperCase()});if(S.proveedores.some(function(p){return p.nombre.toLowerCase()===nm.toLowerCase()})){var existing=S.proveedores.find(function(p){return p.nombre.toLowerCase()===nm.toLowerCase()});sel.value=existing.nombre;toast(nm+' ya existe, seleccionado');return}var id=nextId('PV',S.proveedores);var t=now();S.proveedores.push({id:id,nombre:nm,tipo:'Local',activo:'SI',_row:9999});SyncQueue.add([{sheet:'\u{1F3EA} Proveedores',values:[id,nm,'Local','SI']},{sheet:'\u{1F4DC} Bit\u00e1cora',values:[t.date,t.time,uName(),'Proveedor agregado',nm,'proveedor']}]);var opt=document.createElement('option');opt.value=nm;opt.text=nm;opt.selected=true;sel.insertBefore(opt,sel.querySelector('option[value="__nuevo__"]'));sel.value=nm;toast('\u2795 '+nm+' agregado como proveedor');}
-function acInputFor(id){if(id==='fCP'||id==='acP')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCPv'||id==='ckProv')acInput(id,S.proveedores,p=>p.nombre,true);else if(id==='fNProd')acInput(id,S.catalogo,p=>p.producto,'prod')}
+function acInputFor(id){if(id==='fCP'||id==='acP')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCPv'||id==='ckProv')acInput(id,S.proveedores,p=>p.nombre,true);else if(id==='fNProd')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCD_prod')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCD_prov')acInput(id,S.proveedores,p=>p.nombre,true)}
 document.addEventListener('click',function(e){document.querySelectorAll('.autocomplete-list.open').forEach(l=>{if(!l.parentElement.contains(e.target))l.className='autocomplete-list'})})
 
 function render(){const a=document.getElementById('app');if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
@@ -457,7 +457,6 @@ var _cdCart=[];
 function openCompraDirecta(){_cdCart=[];modalType='compraDirecta';render()}
 function fmCompraDirecta(){
   var hoy=today();
-  var provOpts=S.proveedores.filter(function(p){return p.activo==='SI'}).map(function(p){return '<option value="'+p.nombre+'">'+p.nombre+'</option>'}).join('');
   return '<div class="modal-title">\u{1F4F1} Compra Directa / Foránea</div>'+
     '<div style="background:var(--surface2);border-radius:8px;padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--text2)">\u{1F4AC} Para pedidos por WhatsApp u órdenes foráneas sin lista</div>'+
     '<div class="form-group"><label class="form-label">\u{1F4C5} Fecha de compra</label>'+
@@ -472,7 +471,7 @@ function fmCompraDirecta(){
     '<input class="form-input" id="fCD_pu" type="number" inputmode="decimal" placeholder="0.00" step="0.01" oninput="cdCalc()"></div></div>'+
     '<div id="cdTotalPreview"></div>'+
     '<div class="form-group"><label class="form-label">Proveedor</label>'+
-    '<select class="form-select" id="fCD_prov"><option value="">Sin proveedor</option>'+provOpts+'</select></div>'+
+    '<div class="autocomplete-wrap"><input class="form-input" id="fCD_prov" placeholder="\u{1F50D} Buscar proveedor..." oninput="acInputFor(\'fCD_prov\')" onfocus="acInputFor(\'fCD_prov\')" autocomplete="off">'+'<div class="autocomplete-list" id="fCD_provList"></div></div></div>'+
     '<div class="form-group"><label class="form-label">Notas (opcional)</label>'+
     '<input class="form-input" id="fCD_notas" value="Pedido foráneo WA" placeholder="WhatsApp, foráneo..."></div>'+
     '<button class="btn btn-secondary" style="width:100%;margin-bottom:12px" onclick="cdAddItem()">➕ Agregar a lista</button>'+
@@ -493,7 +492,7 @@ function cdAddItem(){
   var prod=(_acSelected&&_acSelected['fCD_prod'])||document.getElementById('fCD_prod')?.value?.trim()||'';
   var qty=parseFloat(document.getElementById('fCD_qty')?.value)||0;
   var pu=parseFloat(document.getElementById('fCD_pu')?.value)||0;
-  var prov=document.getElementById('fCD_prov')?.value||'';
+  var prov=(_acSelected&&_acSelected['fCD_prov'])||document.getElementById('fCD_prov')?.value?.trim()||'';
   var notas=document.getElementById('fCD_notas')?.value||'';
   if(!prod||qty<=0||pu<=0){toast('Completa: producto, cantidad y precio',1);return}
   var cat=S.catalogo.find(function(c){return c.producto===prod});
