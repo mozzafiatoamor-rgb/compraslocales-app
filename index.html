@@ -675,7 +675,7 @@ function renderReportes(){
   html+='</div>';
   S._rptData={catSorted:catSorted,prodSorted:prodSorted,diaSorted:diaSorted,provSorted:provSorted,compSorted:compSorted,totalGastado:totalGastado,totalAsignado:totalAsignado};
   if(S.rptProdSearch){
-    html+='<div id="rptSrchRes">'+_rptSrchContent(compras,prodSorted,S.rptProdSearch)+'</div>';
+    html+='<div id="rptSrchRes">'+_rptSrchContent(S.compras||[],prodSorted,S.rptProdSearch)+'</div>';
     return html;
   }
   html+='<div id="rptSrchRes" style="display:none"></div>';
@@ -929,9 +929,8 @@ function _frS(){
   var si=document.getElementById('rptProdSrch');
   if(si&&si!==document.activeElement)si.value=S.rptProdSearch||'';
   var D=S._rptData;
-  var data=rptGetFiltered();
   el.style.display=S.rptProdSearch?'':'none';
-  el.innerHTML=S.rptProdSearch?_rptSrchContent(data.compras,D?D.prodSorted:[],S.rptProdSearch):'';
+  el.innerHTML=S.rptProdSearch?_rptSrchContent(S.compras||[],D?D.prodSorted:[],S.rptProdSearch):'';
 }
 
 </script>
