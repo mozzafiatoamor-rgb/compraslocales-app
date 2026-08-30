@@ -323,6 +323,15 @@ function handleCkPvChange(sel){if(sel.value!=='__nuevo__')return;var nm=prompt('
 function acInputFor(id){if(id==='fCP'||id==='acP')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCPv'||id==='ckProv')acInput(id,S.proveedores,p=>p.nombre,true);else if(id==='fNProd')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCD_prod')acInput(id,S.catalogo,p=>p.producto,'prod');else if(id==='fCD_prov')acInput(id,S.proveedores,p=>p.nombre,true)}
 document.addEventListener('click',function(e){document.querySelectorAll('.autocomplete-list.open').forEach(l=>{if(!l.parentElement.contains(e.target))l.className='autocomplete-list'})})
 
+// === MOBILE BACK GESTURE ===
+window.addEventListener('popstate',function(){
+  if(S.screen!=='main'){history.pushState({},'');return}
+  if(modalType){closeModal();history.pushState({tab:S.tab},'');return}
+  if(S.tab!=='home'){switchTab('home');return}
+  history.pushState({tab:'home'},'');
+});
+function _initNav(){if(S.screen==='main')history.pushState({tab:S.tab||'home'},'');}
+
 function render(){const a=document.getElementById('app');if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
 
 function renderSetup(){
@@ -334,7 +343,7 @@ async function connectSheet(){toast('Conectando...');try{await Sheets.read('\u{1
 
 function renderLogin(){return'<div class="setup-screen"><img src="'+LOGO+'" class="setup-logo" onerror="this.style.display=\'none\'"><div class="setup-title">\u{1F6D2} Compras</div><div class="setup-desc">Inicia sesi\u00f3n</div><input class="login-input" id="lu" placeholder="\u{1F464} Usuario" autocapitalize="off"><input class="login-input" id="lp" placeholder="\u{1F512} Contrase\u00f1a" type="password" onkeydown="if(event.key===\'Enter\')doLogin()"><div style="width:100%;max-width:360px"><button class="btn btn-primary" onclick="doLogin()">\u{1F511} Entrar</button></div></div>'}
 
-async function doLogin(){const u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value;if(!u||!p){toast('Completa campos',1);hideWorking();return}await Sheets.loadUsers();const f=S.usuarios.find(x=>x.usuario.toLowerCase()===u&&x.password===p);if(!f){toast('Credenciales incorrectas',1);hideWorking();return}S.currentUser={id:f.id,usuario:f.usuario,nombre:f.nombre,rol:f.rol};localStorage.setItem('currentUser_compras',JSON.stringify(S.currentUser));S.screen='main';toast('\u00a1Hola, '+f.nombre+'!');await Sheets.loadAll();logAction('Login','Acceso','login')}
+async function doLogin(){const u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value;if(!u||!p){toast('Completa campos',1);hideWorking();return}await Sheets.loadUsers();const f=S.usuarios.find(x=>x.usuario.toLowerCase()===u&&x.password===p);if(!f){toast('Credenciales incorrectas',1);hideWorking();return}S.currentUser={id:f.id,usuario:f.usuario,nombre:f.nombre,rol:f.rol};localStorage.setItem('currentUser_compras',JSON.stringify(S.currentUser));S.screen='main';toast('\u00a1Hola, '+f.nombre+'!');_initNav();await Sheets.loadAll();logAction('Login','Acceso','login')}
 function logout(){logAction('Logout','Sali\u00f3','logout');S.currentUser=null;localStorage.removeItem('currentUser_compras');S.screen='login';modalType=null;render();toast('Sesi\u00f3n cerrada')}
 
 function renderSheetAlerts(){if(!S.sheetAlerts||!S.sheetAlerts.length)return'';return S.sheetAlerts.map(function(a){var color=a.critico?'var(--red)':'var(--yellow)';var bg=a.critico?'rgba(248,113,113,.12)':'rgba(251,191,36,.1)';var border=a.critico?'rgba(248,113,113,.4)':'rgba(251,191,36,.3)';var icon=a.critico?'\u{1F6A8}':'\u26a0\ufe0f';var msg=a.critico?'\u00a1L\u00edmite alcanzado! La hoja '+a.sheet+' tiene '+a.registros+'/'+a.limite+' registros. Los nuevos datos pueden no aparecer. Considera limpiar filas antiguas.':'La hoja '+a.sheet+' est\u00e1 al '+a.pct+'% ('+a.registros+'/'+a.limite+' registros). Pronto puede dejar de mostrar datos nuevos.';return'<div style="background:'+bg+';border:1px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px"><span style="font-size:18px;flex-shrink:0">'+icon+'</span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+color+';margin-bottom:2px">'+(a.critico?'\u00a1L\u00edmite del Sheet!':'Aviso: Sheet lleno pronto')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.4">'+msg+'</div><div style="margin-top:8px;background:var(--surface3);border-radius:4px;height:6px;overflow:hidden"><div style="background:'+color+';height:100%;width:'+Math.min(a.pct,100)+'%;border-radius:4px;transition:width .3s"></div></div><div style="font-size:10px;color:var(--text2);margin-top:3px">'+a.pct+'% usado</div></div></div>'}).join('')}
@@ -462,8 +471,8 @@ function fmCompraDirecta(){
     '<div class="form-group"><label class="form-label">\u{1F4C5} Fecha de compra</label>'+
     '<input class="form-input" id="fCD_fecha" type="date" value="'+hoy+'"></div>'+
     '<div class="form-group"><label class="form-label">Producto</label>'+
-    '<div class="autocomplete-wrap"><input class="form-input" id="fCD_prod" placeholder="\u{1F50D} Buscar producto..." oninput="acInputFor(\'fCD_prod\')" onfocus="acInputFor(\'fCD_prod\')" autocomplete="off">'+
-    '<div class="autocomplete-list" id="fCD_prodList"></div></div></div>'+
+    '<div id="fCD_prodWrap"><div class="autocomplete-wrap"><input class="form-input" id="fCD_prod" placeholder="\u{1F50D} Buscar producto..." oninput="acInputFor(\'fCD_prod\')" onfocus="acInputFor(\'fCD_prod\')" autocomplete="off">'+
+    '<div class="autocomplete-list" id="fCD_prodList"></div></div></div></div>'+
     '<div style="display:flex;gap:10px">'+
     '<div class="form-group" style="flex:1"><label class="form-label">Cantidad</label>'+
     '<input class="form-input" id="fCD_qty" type="number" inputmode="decimal" placeholder="0" min="0.1" step="0.1" oninput="cdCalc()"></div>'+
@@ -471,7 +480,7 @@ function fmCompraDirecta(){
     '<input class="form-input" id="fCD_pu" type="number" inputmode="decimal" placeholder="0.00" step="0.01" oninput="cdCalc()"></div></div>'+
     '<div id="cdTotalPreview"></div>'+
     '<div class="form-group"><label class="form-label">Proveedor</label>'+
-    '<div class="autocomplete-wrap"><input class="form-input" id="fCD_prov" placeholder="\u{1F50D} Buscar proveedor..." oninput="acInputFor(\'fCD_prov\')" onfocus="acInputFor(\'fCD_prov\')" autocomplete="off">'+'<div class="autocomplete-list" id="fCD_provList"></div></div></div>'+
+    '<div id="fCD_provWrap"><div class="autocomplete-wrap"><input class="form-input" id="fCD_prov" placeholder="\u{1F50D} Buscar proveedor..." oninput="acInputFor(\'fCD_prov\')" onfocus="acInputFor(\'fCD_prov\')" autocomplete="off">'+'<div class="autocomplete-list" id="fCD_provList"></div></div></div></div>'+
     '<div class="form-group"><label class="form-label">Notas (opcional)</label>'+
     '<input class="form-input" id="fCD_notas" value="Pedido foráneo WA" placeholder="WhatsApp, foráneo..."></div>'+
     '<button class="btn btn-secondary" style="width:100%;margin-bottom:12px" onclick="cdAddItem()">➕ Agregar a lista</button>'+
@@ -498,7 +507,8 @@ function cdAddItem(){
   var cat=S.catalogo.find(function(c){return c.producto===prod});
   _cdCart.push({prod:prod,qty:qty,pu:pu,total:qty*pu,cat:cat?cat.categoria:'',unidad:cat?cat.unidad:'pza',prov:prov,notas:notas});
   if(_acSelected)_acSelected['fCD_prod']='';
-  var pi=document.getElementById('fCD_prod');if(pi)pi.value='';
+  var pw=document.getElementById('fCD_prodWrap');
+  if(pw)pw.innerHTML='<div class="autocomplete-wrap"><input class="form-input" id="fCD_prod" placeholder="\u{1F50D} Buscar producto..." oninput="acInputFor(\'fCD_prod\')" onfocus="acInputFor(\'fCD_prod\')" autocomplete="off"><div class="autocomplete-list" id="fCD_prodList"></div></div>';
   var qi=document.getElementById('fCD_qty');if(qi)qi.value='';
   var ui=document.getElementById('fCD_pu');if(ui)ui.value='';
   var tp=document.getElementById('cdTotalPreview');if(tp)tp.innerHTML='';
@@ -924,7 +934,7 @@ async function _bulkComplete(titulo,fecha){var items=S.pedidos.filter(function(p
 async function _bulkArchive(titulo,fecha){var items=S.pedidos.filter(function(p){return p.titulo===titulo&&p.fecha===fecha&&p.estado!=='Archivado'});await Promise.allSettled(items.map(function(p){return Sheets.deleteRow('📋 Pedidos',p._row).then(function(){return Sheets.append('📋 Pedidos',[p.id,p.fecha,p.hora,p.titulo,p.producto,p.cantidad,p.unidad,p.precioRef,p.subtotal,p.creador,'Archivado'])})}));items.forEach(function(p){p.estado='Archivado'});logAction('Pedido archivado (bulk)',titulo,'archive')}
 async function _bulkDelete(titulo){var rows=[];S.pedidos.forEach(function(p){if(p.titulo===titulo)rows.push(p._row)});rows.sort(function(a,b){return b-a});await Promise.allSettled(rows.map(function(r){return Sheets.deleteRow('📋 Pedidos',r)}));S.pedidos=S.pedidos.filter(function(p){return p.titulo!==titulo});logAction('Pedido eliminado (bulk)',titulo,'delete')}
 
-(async function(){if(S.sheetId&&S.apiKey&&SCRIPT_URL){const su=localStorage.getItem('currentUser_compras');if(su){try{S.currentUser=JSON.parse(su);S.screen='main';S.connected=true;render();await Sheets.loadUsers();const ok=S.usuarios.find(function(u){return u.usuario===S.currentUser.usuario});if(!ok){toast('Cuenta deshabilitada',1);logout();return}await Sheets.loadAll()}catch(e){S.screen='login';render()}}else{S.screen='login';S.connected=true;await Sheets.loadUsers();render()}}else{render()}})();
+(async function(){if(S.sheetId&&S.apiKey&&SCRIPT_URL){const su=localStorage.getItem('currentUser_compras');if(su){try{S.currentUser=JSON.parse(su);S.screen='main';S.connected=true;render();_initNav();await Sheets.loadUsers();const ok=S.usuarios.find(function(u){return u.usuario===S.currentUser.usuario});if(!ok){toast('Cuenta deshabilitada',1);logout();return}await Sheets.loadAll()}catch(e){S.screen='login';render()}}else{S.screen='login';S.connected=true;await Sheets.loadUsers();render()}}else{render()}})();
 
 
 function _rptSrchContent(compras,prodSorted,pq){
