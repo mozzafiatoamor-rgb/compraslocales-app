@@ -539,7 +539,7 @@ async function cdSubmit(){
   _cdCart.forEach(function(c){
     var id=nextId('C',S.compras);
     S.compras.unshift({id:id,fecha:fecha,hora:n.time,categoria:c.cat,producto:c.prod,cantidad:c.qty,unidad:c.unidad,precio:c.total,proveedor:c.prov,ticket:'NO',comprador:uName(),notas:c.notas,_row:9999});
-    syncItems.push({sheet:'\u{1F9FE} Compras',values:[id,fecha,n.time,c.cat,c.prod,c.qty,c.unidad,c.total,c.prov,'NO',uName(),c.notas],_priceUpdate:{producto:c.prod,precio:c.pu}});
+    syncItems.push({sheet:'\u{1F9FE} Compras',values:[id,fecha,n.time,c.cat,c.prod,c.qty,c.unidad,c.total,c.prov,'NO',uName(),c.notas],_priceUpdate:{producto:c.prod,precio:c.pu||c.total/c.qty}});
   });
   syncItems.push({sheet:'\u{1F4DC} Bitácora',values:[n.date,n.time,uName(),'Compra directa WA',cnt+' items — '+fmt$(tot),'compra']});
   _cdCart=[];modalType=null;hideWorking();render();
