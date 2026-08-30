@@ -842,6 +842,7 @@ async function _bulkDelete(titulo){var rows=[];S.pedidos.forEach(function(p){if(
 
 
 function _rptSrchContent(compras,prodSorted,pq){
+  function norm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
   var html='';
   if(!pq){
     if(!prodSorted.length){return'<div class="rpt-empty">Sin compras en este periodo</div>';}
@@ -858,8 +859,8 @@ function _rptSrchContent(compras,prodSorted,pq){
     });
     return html;
   }
-  var q=pq.toLowerCase();
-  var matches=compras.filter(function(c){return c.producto.toLowerCase().includes(q)});
+  var q=norm(pq);
+  var matches=compras.filter(function(c){return norm(c.producto).includes(q)});
   if(!matches.length){return'<div class="rpt-empty">\u{1F50D} Sin resultados para «'+pq+'»</div>';}
   var uniqueProds={};
   matches.forEach(function(c){var k=c.producto;if(!uniqueProds[k])uniqueProds[k]={total:0,cnt:0,cat:c.categoria,unit:c.unidad};uniqueProds[k].total+=c.precio;uniqueProds[k].cnt++;});
@@ -886,7 +887,10 @@ function _rptSrchContent(compras,prodSorted,pq){
   var pMin=Math.min.apply(null,prs),pMax=Math.max.apply(null,prs),pAvg=tot/pc.length;
   var byProv={};pc.forEach(function(c){var p=c.proveedor||'Sin proveedor';if(!byProv[p])byProv[p]=0;byProv[p]+=c.precio});
   var provS=Object.entries(byProv).sort(function(a,b){return b[1]-a[1]});
-  html+='<div style="font-weight:700;font-size:14px;margin-bottom:12px;color:var(--text)">'+nm+'</div>';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  html+='<button onclick="S.rptProdSearch=S._rptLastQ||\'\';S._rptLastQ=\'\';_frS()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--text2)">&larr; Volver</button>';
+  html+='<div style="font-weight:700;font-size:14px;color:var(--text)">'+nm+'</div>';
+  html+='</div>';
   html+='<div class="stats-grid">'+
     '<div class="stat-box red"><div class="stat-number">'+fmt$(tot)+'</div><div class="stat-label">Total Gastado</div></div>'+
     '<div class="stat-box orange"><div class="stat-number">'+pc.length+'</div><div class="stat-label">Compras</div></div>'+
@@ -918,12 +922,12 @@ function _rptSrchContent(compras,prodSorted,pq){
   return html;
 }
 
-function _selProd(i){var pl=window._rptPL||[];if(i>=0&&i<pl.length)S.rptProdSearch=pl[i];_frS();}
+function _selProd(i){var pl=window._rptPL||[];if(i>=0&&i<pl.length){S._rptLastQ=S.rptProdSearch;S.rptProdSearch=pl[i];}_frS();}
 function _frS(){
   var el=document.getElementById('rptSrchRes');
   if(!el){render();return;}
   var si=document.getElementById('rptProdSrch');
-  if(si)S.rptProdSearch=si.value;
+  if(si&&si!==document.activeElement)si.value=S.rptProdSearch||'';
   var D=S._rptData;
   var data=rptGetFiltered();
   el.style.display=S.rptProdSearch?'':'none';
