@@ -296,7 +296,7 @@ function uName(){return S.currentUser?S.currentUser.nombre:''}
 function uInit(){if(!S.currentUser)return'?';return S.currentUser.nombre.split(' ').map(p=>p[0]).join('').toUpperCase().slice(0,2)}
 function getDayFondos(d){return S.fondos.filter(f=>f.fecha===d)}
 function getDayCompras(d){return S.compras.filter(c=>c.fecha===d)}
-function getDaySummary(d){const fondos=getDayFondos(d);const compras=getDayCompras(d);const asignado=fondos.filter(f=>f.tipo==='Asignaci\u00f3n').reduce((s,f)=>s+f.monto,0);const devuelto=fondos.filter(f=>f.tipo==='Devoluci\u00f3n').reduce((s,f)=>s+f.monto,0);const gastado=compras.reduce((s,c)=>s+c.precio,0);const cerrado=fondos.some(f=>f.tipo==='Cierre');return{asignado,devuelto,gastado,disponible:asignado-gastado,balance:asignado-gastado-devuelto,cerrado,items:compras.length}}
+function getDaySummary(d){const fondos=getDayFondos(d);const compras=getDayCompras(d);const asignado=fondos.filter(f=>f.tipo==='Asignaci\u00f3n').reduce((s,f)=>s+f.monto,0);const devuelto=fondos.filter(f=>f.tipo==='Devoluci\u00f3n').reduce((s,f)=>s+f.monto,0);const gastado=compras.filter(function(c){return c.ticket!=='EXT'}).reduce((s,c)=>s+c.precio,0);const cerrado=fondos.some(f=>f.tipo==='Cierre');return{asignado,devuelto,gastado,disponible:asignado-gastado,balance:asignado-gastado-devuelto,cerrado,items:compras.length}}
 function logAction(a,d,t){const n=now();SyncQueue.add([{sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),a,d,t]}])}
 function buildProdName(nom,marca,pres){return[nom.trim(),marca.trim(),pres.trim()].filter(Boolean).join(' ')}
 function parseProdName(str){var s=str||'';if(s.includes('_')){var p=s.split('_');return{nombre:p[0]||'',marca:p[1]||'',presentacion:p.slice(2).join(' ')||''}}return{nombre:s,marca:'',presentacion:''}}
@@ -479,8 +479,10 @@ function fmCompraDirecta(){
     '<div class="form-group" style="flex:1"><label class="form-label">Precio Unit $</label>'+
     '<input class="form-input" id="fCD_pu" type="number" inputmode="decimal" placeholder="0.00" step="0.01" oninput="cdCalc()"></div></div>'+
     '<div id="cdTotalPreview"></div>'+
-    '<div class="form-group"><label class="form-label">Proveedor</label>'+
-    '<div id="fCD_provWrap"><div class="autocomplete-wrap"><input class="form-input" id="fCD_prov" placeholder="\u{1F50D} Buscar proveedor..." oninput="acInputFor(\'fCD_prov\')" onfocus="acInputFor(\'fCD_prov\')" autocomplete="off">'+'<div class="autocomplete-list" id="fCD_provList"></div></div></div></div>'+
+    '<div class="form-group"><label class="form-label">Proveedor <span id="fCD_provLbl" style="color:var(--accent);font-weight:700"></span></label>'+'<div id="fCD_provChips" style="display:flex;flex-wrap:wrap;gap:6px">'+S.proveedores.filter(function(p){return p.activo==="SI"}).map(function(p){return'<button type="button" onclick="cdPickProv(\''+p.nombre.replace(/\'/g,"\\'")+'\')" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer">'+p.nombre+'</button>'}).join('')+'</div>'+'<input type="hidden" id="fCD_prov" value=""></div>'+
+    '<div class="form-group" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">'+
+    '<span class="form-label" style="margin:0">\u{1F4B0} Pagado de caja</span>'+
+    '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="fCD_caja" style="width:20px;height:20px"><span style="font-size:13px">S\u00ed</span></label></div>'+
     '<div class="form-group"><label class="form-label">Notas (opcional)</label>'+
     '<input class="form-input" id="fCD_notas" value="Pedido foráneo WA" placeholder="WhatsApp, foráneo..."></div>'+
     '<button class="btn btn-secondary" style="width:100%;margin-bottom:12px" onclick="cdAddItem()">➕ Agregar a lista</button>'+
@@ -490,6 +492,13 @@ function fmCompraDirecta(){
     '✅ Guardar '+(_cdCart.length>0?'('+_cdCart.length+' items)':'')+'</button>'+
     '<div style="height:8px"></div>'+
     '<button class="btn btn-secondary" style="width:100%" onclick="closeModal()">✖ Cerrar</button>';
+}
+function cdPickProv(name){
+  document.querySelectorAll('#fCD_provChips button').forEach(function(b){b.style.background='var(--surface2)';b.style.borderColor='var(--border)';b.style.fontWeight='normal';});
+  var matched=Array.from(document.querySelectorAll('#fCD_provChips button')).find(function(b){return b.textContent===name;});
+  if(matched){matched.style.background='var(--accent)';matched.style.borderColor='var(--accent)';matched.style.fontWeight='700';matched.style.color='#fff';}
+  var h=document.getElementById('fCD_prov');if(h)h.value=name;
+  var lbl=document.getElementById('fCD_provLbl');if(lbl)lbl.textContent=name?('- '+name):'';
 }
 function cdCalc(){
   var q=parseFloat(document.getElementById('fCD_qty')?.value)||0;
@@ -501,7 +510,7 @@ function cdAddItem(){
   var prod=(_acSelected&&_acSelected['fCD_prod'])||document.getElementById('fCD_prod')?.value?.trim()||'';
   var qty=parseFloat(document.getElementById('fCD_qty')?.value)||0;
   var pu=parseFloat(document.getElementById('fCD_pu')?.value)||0;
-  var prov=(_acSelected&&_acSelected['fCD_prov'])||document.getElementById('fCD_prov')?.value?.trim()||'';
+  var prov=document.getElementById('fCD_prov')?.value?.trim()||'';
   var notas=document.getElementById('fCD_notas')?.value||'';
   if(!prod||qty<=0||pu<=0){toast('Completa: producto, cantidad y precio',1);return}
   var cat=S.catalogo.find(function(c){return c.producto===prod});
@@ -534,12 +543,14 @@ function cdRenderCart(){
 async function cdSubmit(){
   if(!_cdCart.length){toast('Agrega al menos un producto',1);return}
   var fecha=document.getElementById('fCD_fecha')?.value||today();
+  var deCaja=document.getElementById('fCD_caja')?.checked||false;
   var n=now();showWorking();
   var syncItems=[];var tot=_cdCart.reduce(function(s,c){return s+c.total},0);var cnt=_cdCart.length;
   _cdCart.forEach(function(c){
     var id=nextId('C',S.compras);
-    S.compras.unshift({id:id,fecha:fecha,hora:n.time,categoria:c.cat,producto:c.prod,cantidad:c.qty,unidad:c.unidad,precio:c.total,proveedor:c.prov,ticket:'NO',comprador:uName(),notas:c.notas,_row:9999});
-    syncItems.push({sheet:'\u{1F9FE} Compras',values:[id,fecha,n.time,c.cat,c.prod,c.qty,c.unidad,c.total,c.prov,'NO',uName(),c.notas],_priceUpdate:{producto:c.prod,precio:c.pu||c.total/c.qty}});
+    var _tk=deCaja?'SI':'EXT';var _notas=c.notas+(deCaja?'':' [FORANEO]');
+    S.compras.unshift({id:id,fecha:fecha,hora:n.time,categoria:c.cat,producto:c.prod,cantidad:c.qty,unidad:c.unidad,precio:c.total,proveedor:c.prov,ticket:_tk,comprador:uName(),notas:_notas,_row:9999});
+    syncItems.push({sheet:'\u{1F9FE} Compras',values:[id,fecha,n.time,c.cat,c.prod,c.qty,c.unidad,c.total,c.prov,_tk,uName(),_notas],_priceUpdate:{producto:c.prod,precio:c.pu||c.total/c.qty}});
   });
   syncItems.push({sheet:'\u{1F4DC} Bitácora',values:[n.date,n.time,uName(),'Compra directa WA',cnt+' items — '+fmt$(tot),'compra']});
   _cdCart=[];modalType=null;hideWorking();render();
