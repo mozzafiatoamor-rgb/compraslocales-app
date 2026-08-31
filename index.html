@@ -479,7 +479,7 @@ function fmCompraDirecta(){
     '<div class="form-group" style="flex:1"><label class="form-label">Precio Unit $</label>'+
     '<input class="form-input" id="fCD_pu" type="number" inputmode="decimal" placeholder="0.00" step="0.01" oninput="cdCalc()"></div></div>'+
     '<div id="cdTotalPreview"></div>'+
-    '<div class="form-group"><label class="form-label">Proveedor <span id="fCD_provLbl" style="color:var(--accent);font-weight:700"></span></label>'+'<div id="fCD_provChips" style="display:flex;flex-wrap:wrap;gap:6px">'+S.proveedores.filter(function(p){return p.activo==="SI"}).map(function(p){return'<button type="button" onclick="cdPickProv(\''+p.nombre.replace(/\'/g,"\\'")+'\')" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer">'+p.nombre+'</button>'}).join('')+'</div>'+'<input type="hidden" id="fCD_prov" value=""></div>'+
+    '<div class="form-group"><label class="form-label">Proveedor</label>'+'<div id="fCD_provWrap"><div class="autocomplete-wrap"><input class="form-input" id="fCD_prov" placeholder="\u{1F50D} Buscar proveedor..." oninput="acInputFor(\'fCD_prov\')" onfocus="acInputFor(\'fCD_prov\')" autocomplete="off"><div class="autocomplete-list" id="fCD_provList"></div></div></div></div>'+
     '<div class="form-group" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">'+
     '<span class="form-label" style="margin:0">\u{1F4B0} Pagado de caja</span>'+
     '<label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="fCD_caja" style="width:20px;height:20px"><span style="font-size:13px">S\u00ed</span></label></div>'+
@@ -510,7 +510,7 @@ function cdAddItem(){
   var prod=(_acSelected&&_acSelected['fCD_prod'])||document.getElementById('fCD_prod')?.value?.trim()||'';
   var qty=parseFloat(document.getElementById('fCD_qty')?.value)||0;
   var pu=parseFloat(document.getElementById('fCD_pu')?.value)||0;
-  var prov=document.getElementById('fCD_prov')?.value?.trim()||'';
+  var prov=(_acSelected&&_acSelected['fCD_prov'])||document.getElementById('fCD_prov')?.value?.trim()||'';
   var notas=document.getElementById('fCD_notas')?.value||'';
   if(!prod||qty<=0||pu<=0){toast('Completa: producto, cantidad y precio',1);return}
   var cat=S.catalogo.find(function(c){return c.producto===prod});
