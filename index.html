@@ -179,6 +179,7 @@ body.comprador-mode .badge{font-weight:400}
 body.comprador-mode .form-input{background:var(--surface2);border-color:var(--surface3)}
 body.comprador-mode .bottom-nav{height:64px}
 body.comprador-mode h1,body.comprador-mode h2,body.comprador-mode h3{font-weight:300}
+body.comprador-mode .config-btn{display:none!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -189,8 +190,51 @@ body.comprador-mode h1,body.comprador-mode h2,body.comprador-mode h3{font-weight
 <script>
 const LOGO='logo.png';
 let SCRIPT_URL=localStorage.getItem('scriptUrl_compras')||'';
-const S={screen:'setup',setupStep:1,tab:'home',sheetId:localStorage.getItem('sheetId_compras')||'',apiKey:localStorage.getItem('apiKey_compras')||'',connected:false,currentUser:null,usuarios:[],catalogo:[],proveedores:[],compras:[],fondos:[],pedidos:[],bitacora:[],loading:false,searchQuery:'',comprasFilter:'todos',cuadreDate:'',filterDate:'',comprasView:'pendientes',reportView:'cuadre',reportDateFrom:'',reportDateTo:'',homeView:'resumen',homeDateFrom:'',homeDateTo:'',sheetAlerts:[],permisos:{cajero:{reportesWA:true,verFondos:true,registrarCompras:true,gestionarCatalogo:false},cocinero:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:true},comprador:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:false}}};
+const S={screen:'setup',setupStep:1,tab:'home',sheetId:localStorage.getItem('sheetId_compras')||'',apiKey:localStorage.getItem('apiKey_compras')||'',connected:false,currentUser:null,usuarios:[],catalogo:[],proveedores:[],compras:[],fondos:[],pedidos:[],rutas:[],bitacora:[],loading:false,searchQuery:'',comprasFilter:'todos',cuadreDate:'',filterDate:'',comprasView:'pendientes',reportView:'cuadre',reportDateFrom:'',reportDateTo:'',homeView:'resumen',homeDateFrom:'',homeDateTo:'',sheetAlerts:[],permisos:{cajero:{reportesWA:true,verFondos:true,registrarCompras:true,gestionarCatalogo:false},cocinero:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:true},comprador:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:false}}};
 var _mcExpanded={};var _mcObs={};
+var _routeActive=false;
+var _routeStartMs=null;
+var _routeTimerInterval=null;
+var _routeGeoInterval=null;
+var _routeSessionId=null;
+
+function _routeStart(){
+  if(_routeActive)return;
+  _routeActive=true;_routeStartMs=Date.now();_routeSessionId='R'+Date.now();
+  _routeTimerInterval=setInterval(function(){var el=document.getElementById('_routeTimer');if(el)el.textContent=_routeElapsed();},10000);
+  _routeGeoInterval=setInterval(function(){_logGPS('auto');},5*60*1000);
+  _logGPS('inicio');render();toast('\u{1F550} Recorrido iniciado');
+}
+
+function _routeStop(){
+  _logGPS('fin');_routeActive=false;
+  clearInterval(_routeTimerInterval);clearInterval(_routeGeoInterval);
+  _routeTimerInterval=null;_routeGeoInterval=null;
+  render();toast('\u{1F3C1} Recorrido finalizado');
+}
+
+function _routeElapsed(){
+  if(!_routeStartMs)return'--:--';
+  var ms=Date.now()-_routeStartMs;
+  var h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);
+  return(h>0?h+'h ':'')+m+'min';
+}
+
+function _logGPS(tipo,notas){
+  if(!navigator.geolocation)return;
+  var sid=_routeSessionId,ts=now();
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
+    SyncQueue.add([{sheet:'\u{1F5FA} Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}],function(){});
+  },function(){},{timeout:8000,maximumAge:30000});
+}
+
+function _buildRouteMapURL(pts){
+  if(!pts||!pts.length)return null;
+  return'https://www.google.com/maps/dir/'+pts.map(function(p){return p.lat+','+p.lng}).join('/');
+}
+
+
 var _hiddenCompras=JSON.parse(localStorage.getItem('hiddenCompras_mzf')||'[]');
 var _archivedCompras=JSON.parse(localStorage.getItem('archivedCompras_mzf')||'[]');
 var _selectedCompras={};
@@ -225,6 +269,10 @@ const Sheets={
     S.fondos=fd.map((r,i)=>({id:r[0]||'',fecha:r[1]||'',hora:r[2]||'',tipo:r[3]||'',monto:parseFloat(r[4])||0,responsable:r[5]||'',notas:r[6]||'',_row:i+2})).filter(f=>f.tipo).reverse().slice(0,200);
     S.bitacora=bt.map(r=>({fecha:r[0]||'',hora:r[1]||'',usuario:r[2]||'',accion:r[3]||'',detalle:r[4]||'',tipo:r[5]||''})).filter(b=>b.accion).reverse().slice(0,200);
     S.pedidos=pd.map((r,i)=>({id:r[0]||'',fecha:r[1]||'',hora:r[2]||'',titulo:r[3]||'',producto:r[4]||'',cantidad:parseFloat(r[5])||0,unidad:r[6]||'',precioRef:parseFloat(r[7])||0,subtotal:parseFloat(r[8])||0,creador:r[9]||'',estado:r[10]||'Pendiente',_row:i+2})).filter(p=>p.producto).reverse().slice(0,300);
+    // Rutas GPS (optional sheet)
+    try{var rt=await this.read('\u{1F5FA} Rutas','A2:H2000');
+    S.rutas=rt.map(function(r){return{sesion:r[0]||'',fecha:r[1]||'',hora:r[2]||'',comprador:r[3]||'',lat:r[4]||'',lng:r[5]||'',tipo:r[6]||'',notas:r[7]||''};}).filter(function(r){return r.lat&&r.lng;}).reverse().slice(0,1000);
+    }catch(e){S.rutas=[];}
     // Detectar si alguna hoja est\u00e1 cerca de su l\u00edmite (>85%)
     S.sheetAlerts=[];
     var rawCounts={compras:cp.length,catalogo:c.length,pedidos:pd.length,fondos:fd.length,bitacora:bt.length,proveedores:pv.length};
@@ -346,7 +394,7 @@ window.addEventListener('popstate',function(){
 });
 function _initNav(){if(S.screen==='main')history.pushState({tab:S.tab||'home'},'');}
 
-function render(){const a=document.getElementById('app');document.body.classList.toggle('comprador-mode',isComprador());if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
+function render(){const a=document.getElementById('app');document.body.classList.toggle('comprador-mode',isComprador());if(isComprador()&&!['micompra','micuadre'].includes(S.tab))S.tab='micompra';if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
 
 function renderSetup(){
   if(S.setupStep===1)return'<div class="setup-screen"><div class="step-indicator"><div class="step-dot active"></div><div class="step-dot"></div><div class="step-dot"></div></div><img src="'+LOGO+'" class="setup-logo" onerror="this.style.display=\'none\'"><div class="setup-title">\u{1F6D2} Compras</div><div class="setup-desc">ID del Google Sheet</div><input class="setup-input" id="si" placeholder="Sheet ID" value="'+S.sheetId+'" oninput="S.sheetId=this.value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId" onpaste="setTimeout(function(){S.sheetId=document.getElementById(\'si\').value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId},100)" onchange="S.sheetId=this.value.trim();document.getElementById(\'btnN1\').disabled=!S.sheetId"><div style="width:100%;max-width:360px"><button class="btn btn-primary" id="btnN1" onclick="S.setupStep=2;render()" '+(S.sheetId?'':'disabled')+'>Siguiente \u2192</button></div></div>';
@@ -363,7 +411,7 @@ function logout(){logAction('Logout','Sali\u00f3','logout');S.currentUser=null;l
 function renderSheetAlerts(){if(!S.sheetAlerts||!S.sheetAlerts.length)return'';return S.sheetAlerts.map(function(a){var color=a.critico?'var(--red)':'var(--yellow)';var bg=a.critico?'rgba(248,113,113,.12)':'rgba(251,191,36,.1)';var border=a.critico?'rgba(248,113,113,.4)':'rgba(251,191,36,.3)';var icon=a.critico?'\u{1F6A8}':'\u26a0\ufe0f';var msg=a.critico?'\u00a1L\u00edmite alcanzado! La hoja '+a.sheet+' tiene '+a.registros+'/'+a.limite+' registros. Los nuevos datos pueden no aparecer. Considera limpiar filas antiguas.':'La hoja '+a.sheet+' est\u00e1 al '+a.pct+'% ('+a.registros+'/'+a.limite+' registros). Pronto puede dejar de mostrar datos nuevos.';return'<div style="background:'+bg+';border:1px solid '+border+';border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px"><span style="font-size:18px;flex-shrink:0">'+icon+'</span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:'+color+';margin-bottom:2px">'+(a.critico?'\u00a1L\u00edmite del Sheet!':'Aviso: Sheet lleno pronto')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.4">'+msg+'</div><div style="margin-top:8px;background:var(--surface3);border-radius:4px;height:6px;overflow:hidden"><div style="background:'+color+';height:100%;width:'+Math.min(a.pct,100)+'%;border-radius:4px;transition:width .3s"></div></div><div style="font-size:10px;color:var(--text2);margin-top:3px">'+a.pct+'% usado</div></div></div>'}).join('')}
 function renderMain(){const sc=S.connected?'connected':'';const _sqp=SyncQueue.pending;let c='';switch(S.tab){case'home':c=renderHome();break;case'compras':c=renderCompras();break;case'pedidos':c=renderPedidos();break;case'cuadre':c=renderCuadre();break;case'catalogo':c=renderCatalogo();break;case'bitacora':c=renderBitacora();break;case'reportes':c=renderReportes();break;case'micompra':c=renderMiCompra();break;case'micuadre':c=renderMiCuadre();break}
 var alertsBanner=renderSheetAlerts();
-return'<div class="status-bar"><div class="status-left"><div class="status-dot '+sc+'"></div>'+(_sqp>0?'<span style="font-size:10px;color:var(--yellow);font-weight:700;animation:pulse 2s infinite">\u21bb'+_sqp+'</span>':'')+(S.sheetAlerts&&S.sheetAlerts.some(function(a){return a.critico})?'<span style="font-size:10px;color:var(--red);font-weight:700;animation:pulse 2s infinite">\u{1F6A8}</span>':S.sheetAlerts&&S.sheetAlerts.length?'<span style="font-size:10px;color:var(--yellow);font-weight:700">\u26a0\ufe0f</span>':'')+'<img src="'+LOGO+'" class="app-logo" onerror="this.textContent=\'\u{1F6D2}\'"></div><div class="status-right"><button class="user-badge" onclick="openModal(\'userMenu\')"><div class="user-avatar">'+uInit()+'</div><span class="user-name">'+uName()+'</span></button><button class="config-btn" onclick="openModal(\'settings\')">\u2699\ufe0f</button></div></div><div class="main-content" id="mc">'+(S.loading?'<div class="empty-state"><div class="empty-icon">\u23f3</div><p>Cargando...</p></div>':(alertsBanner?'<div style="padding:0 0 4px">'+alertsBanner+'</div>':'')+c)+'</div>'+_renderNav()+renderModal()}
+return'<div class="status-bar"><div class="status-left"><div class="status-dot '+sc+'"></div>'+(_sqp>0?'<span style="font-size:10px;color:var(--yellow);font-weight:700;animation:pulse 2s infinite">\u21bb'+_sqp+'</span>':'')+(S.sheetAlerts&&S.sheetAlerts.some(function(a){return a.critico})?'<span style="font-size:10px;color:var(--red);font-weight:700;animation:pulse 2s infinite">\u{1F6A8}</span>':S.sheetAlerts&&S.sheetAlerts.length?'<span style="font-size:10px;color:var(--yellow);font-weight:700">\u26a0\ufe0f</span>':'')+'<img src="'+LOGO+'" class="app-logo" onerror="this.textContent=\'\u{1F6D2}\'"></div><div class="status-right"><button class="user-badge" onclick="openModal(\'userMenu\')"><div class="user-avatar">'+uInit()+'</div><span class="user-name">'+uName()+'</span></button><button class='+(isComprador()?'':"<button class=\"config-btn\" onclick=\"openModal(\'settings\')\">\u2699\ufe0f</button>")+'</div></div><div class="main-content" id="mc">'+(S.loading?'<div class="empty-state"><div class="empty-icon">\u23f3</div><p>Cargando...</p></div>':(alertsBanner?'<div style="padding:0 0 4px">'+alertsBanner+'</div>':'')+c)+'</div>'+_renderNav()+renderModal()}
 
 function _renderNav(){
   var t=S.tab;
@@ -413,7 +461,21 @@ function renderMiCompra(){
   var html='';
   html+='<div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">';
   html+='<div style="font-size:20px;font-weight:300;letter-spacing:-.3px">\u{1F6D2} Mis Listas</div>';
-  html+='<div style="font-size:12px;color:var(--text2);font-weight:400">\u{1F464} '+uName()+'</div></div>';
+  html+='<div style="display:flex;align-items:center;gap:10px">';
+  if(_routeActive){
+    html+='<div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:10px;color:var(--text2);letter-spacing:.5px">TIEMPO</span><span id="_routeTimer" style="font-size:15px;color:var(--accent)">'+_routeElapsed()+'</span></div>';
+    html+='<button style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer" onclick="_routeStop()">Finalizar</button>';
+  }else{
+    html+='<button style="background:var(--accent);color:#0f172a;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer" onclick="_routeStart()">' + '\u{1F550}' + ' Iniciar</button>';
+  }
+  html+='</div></div>';
+  var _ds2=getDaySummary(hoy);
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px">';
+  [{l:'ASIGNADO',v:_ds2.asignado,c:'var(--green)'},{l:'GASTADO',v:_ds2.gastado,c:'var(--red)'},{l:'DISPONIBLE',v:_ds2.disponible,c:_ds2.disponible<0?'var(--red)':_ds2.disponible===0?'var(--text2)':'var(--accent)'}].forEach(function(r){
+    html+='<div style="flex:1;background:var(--surface2);border-radius:12px;padding:9px 8px;text-align:center"><div style="font-size:9px;color:var(--text2);font-weight:400;letter-spacing:.5px">'+r.l+'</div><div style="font-size:15px;font-weight:400;color:'+r.c+';margin-top:2px">'+fmt$(r.v)+'</div></div>';
+  });
+  html+='</div>';
+  html+='<button onclick="openCompraDirecta()" style="width:100%;margin-bottom:14px;padding:9px;background:var(--surface2);border:1px dashed rgba(255,255,255,.15);border-radius:12px;color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">\u{1F4F1} Compra directa / For\u00e1neo</button>';
   if(fechas.length>1){
     html+='<div class="tab-pills" style="margin-bottom:14px">';
     fechas.forEach(function(f){
@@ -480,7 +542,6 @@ function renderMiCompra(){
     html+='<button style="width:100%;margin-top:14px;padding:11px;background:none;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text2);font-size:13px;font-weight:400;cursor:pointer" onclick="completarPedido(\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+'\')">Cerrar lista de compra</button>';
     html+='</div>';
   });
-  html+='<button class="btn btn-secondary" style="width:100%;border-radius:12px;font-weight:400;margin-top:4px" onclick="openCompraDirecta()">\u{1F4F1} Compra directa / For\u00e1neo</button>';
   return html;
 }
 
@@ -578,6 +639,7 @@ function _mcSave2(uid,titulo,fecha,producto){
     {sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Compra (Mi Compra)',producto+' x'+qty+' '+fmt$(total),'compra']}
   ],function(ok){if(ok)setTimeout(function(){Sheets.loadAll();},500);});
   _mcExpanded[uid]=false;
+  _logGPS('compra',producto);
   toast('\u2705 '+producto+' \u2014 '+fmt$(total));
   render();
 }
@@ -1146,7 +1208,27 @@ function renderReportes(){
 
 
   S._rptData={catSorted:catSorted,prodSorted:prodSorted,diaSorted:diaSorted,provSorted:provSorted,compSorted:compSorted,totalGastado:totalGastado,totalAsignado:totalAsignado};
-  return html;
+    if(!isComprador()){
+    var _rList=S.rutas||[];
+    if(_rList.length){
+      html+='<div class="section-header" style="margin-top:24px">' + '\u{1F5FA}' + '️ Rutas compradores</div>';
+      var _rSes={};
+      _rList.forEach(function(r){
+        if(!_rSes[r.sesion])_rSes[r.sesion]={comp:r.comprador,fecha:r.fecha,pts:[],t0:r.hora,t1:r.hora};
+        _rSes[r.sesion].pts.push({lat:r.lat,lng:r.lng});
+        if(r.hora<_rSes[r.sesion].t0)_rSes[r.sesion].t0=r.hora;
+        if(r.hora>_rSes[r.sesion].t1)_rSes[r.sesion].t1=r.hora;
+      });
+      Object.entries(_rSes).sort(function(a,b){return b[0].localeCompare(a[0])}).slice(0,20).forEach(function(e){
+        var ses=e[1],mu=_buildRouteMapURL(ses.pts);
+        html+='<div class="card" style="margin-bottom:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between;align-items:center">';
+        html+='<div><div style="font-size:14px;font-weight:500">'+ses.comp+'</div><div style="font-size:11px;color:var(--text2);margin-top:2px">'+ses.fecha+'  ·  '+ses.t0+' – '+ses.t1+'  ·  '+ses.pts.length+' pts</div></div>';
+        html+=mu?'<a href="'+mu+'" target="_blank" style="font-size:12px;color:var(--accent);font-weight:500">Ver ruta</a>':'<span style="color:var(--text2);font-size:11px">Sin GPS</span>';
+        html+='</div></div>';
+      });
+    }
+  }
+return html;
 }
 
 // === ADD TO EXISTING PEDIDO ===
