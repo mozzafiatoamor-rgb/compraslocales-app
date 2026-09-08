@@ -225,7 +225,7 @@ function _logGPS(tipo,notas){
   var sid=_routeSessionId,ts=now();
   navigator.geolocation.getCurrentPosition(function(pos){
     var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
-    SyncQueue.add([{sheet:'\u{1F5FA} Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}],function(){});
+    SyncQueue.add([{sheet:'\u{1F5FA}\uFE0F Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}],function(){});
   },function(){},{timeout:8000,maximumAge:30000});
 }
 
@@ -270,7 +270,7 @@ const Sheets={
     S.bitacora=bt.map(r=>({fecha:r[0]||'',hora:r[1]||'',usuario:r[2]||'',accion:r[3]||'',detalle:r[4]||'',tipo:r[5]||''})).filter(b=>b.accion).reverse().slice(0,200);
     S.pedidos=pd.map((r,i)=>({id:r[0]||'',fecha:r[1]||'',hora:r[2]||'',titulo:r[3]||'',producto:r[4]||'',cantidad:parseFloat(r[5])||0,unidad:r[6]||'',precioRef:parseFloat(r[7])||0,subtotal:parseFloat(r[8])||0,creador:r[9]||'',estado:r[10]||'Pendiente',_row:i+2})).filter(p=>p.producto).reverse().slice(0,300);
     // Rutas GPS (optional sheet)
-    try{var rt=await this.read('\u{1F5FA} Rutas','A2:H2000');
+    try{var rt=await this.read('\u{1F5FA}\uFE0F Rutas','A2:H2000');
     S.rutas=rt.map(function(r){return{sesion:r[0]||'',fecha:r[1]||'',hora:r[2]||'',comprador:r[3]||'',lat:r[4]||'',lng:r[5]||'',tipo:r[6]||'',notas:r[7]||''};}).filter(function(r){return r.lat&&r.lng;}).reverse().slice(0,1000);
     }catch(e){S.rutas=[];}
     // Detectar si alguna hoja est\u00e1 cerca de su l\u00edmite (>85%)
