@@ -193,6 +193,7 @@ let SCRIPT_URL=localStorage.getItem('scriptUrl_compras')||'';
 const S={screen:'setup',setupStep:1,tab:'home',sheetId:localStorage.getItem('sheetId_compras')||'',apiKey:localStorage.getItem('apiKey_compras')||'',connected:false,currentUser:null,usuarios:[],catalogo:[],proveedores:[],compras:[],fondos:[],pedidos:[],rutas:[],bitacora:[],loading:false,searchQuery:'',comprasFilter:'todos',cuadreDate:'',filterDate:'',comprasView:'pendientes',reportView:'cuadre',reportDateFrom:'',reportDateTo:'',homeView:'resumen',homeDateFrom:'',homeDateTo:'',sheetAlerts:[],permisos:{cajero:{reportesWA:true,verFondos:true,registrarCompras:true,gestionarCatalogo:false},cocinero:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:true},comprador:{reportesWA:false,verFondos:false,registrarCompras:true,gestionarCatalogo:false}}};
 var _mcExpanded={};var _mcObs={};
 var _routeActive=false;
+var _mcBatch={};
 var _routeStartMs=null;
 var _routeTimerInterval=null;
 var _routeGeoInterval=null;
@@ -246,7 +247,6 @@ function _logGPS(tipo,notas){
   navigator.geolocation.getCurrentPosition(function(pos){
     var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
     // GPS write - uses same 'append' action as SyncQueue (already works)
-    toast('\u{1F4CD} GPS '+tipo+': '+lat.slice(0,7)+','+lng.slice(0,7));
     fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'append',sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']})}).then(function(r){return r.json();}).then(function(d){if(!d.success)toast('GPS err: '+d.error,1);else toast('\u{1F4CD} Rutas \u2713');}).catch(function(e){toast('GPS sin red',1);});
   },function(){},{timeout:8000,maximumAge:30000});
 }
@@ -579,31 +579,35 @@ function renderMiCompra(){
     html+='<div style="font-size:10px;color:var(--text2);margin-bottom:6px;font-weight:400;letter-spacing:.5px">OBSERVACIONES</div>';
     html+='<input class="form-input" style="font-size:13px;font-weight:300;padding:9px 12px;border-radius:10px;background:var(--surface2)" placeholder="Ej: No hab\u00eda, lo sust\u00eda..." value="'+(_mcObs[obsKey]||'').replace(/"/g,'&quot;')+'" oninput="_mcObs[\''+obsKey+'\']=this.value">';
     html+='</div>';
+    // Guardar todo + tickets de esta lista
+    var _gTag='[PED:'+g.titulo+'|'+g.fecha+']';
+    var _pendBatch=Object.values(_mcBatch).filter(function(b){return b.titulo===g.titulo&&b.fecha===g.fecha;});
+    if(_pendBatch.length){
+      html+='<button onclick="_mcSaveAll()" style="width:100%;margin-top:12px;background:var(--green);color:#0f172a;border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">\u{1F4BE} Guardar '+_pendBatch.length+' compra'+(_pendBatch.length>1?'s':'')+' \u2014 '+fmt$(_pendBatch.reduce(function(a,b){return a+b.total;},0))+'</button>';
+    }
+    var _gProvs={};
+    S.compras.filter(function(c){return c.comprador===uName()&&c.notas&&c.notas.indexOf(_gTag)>=0&&c.proveedor;}).forEach(function(c){if(!_gProvs[c.proveedor])_gProvs[c.proveedor]=0;_gProvs[c.proveedor]++;});
+    var _gProvKeys=Object.keys(_gProvs);
+    if(_gProvKeys.length){
+      var _gArrKey='_gp'+Date.now();
+      window[_gArrKey]=_gProvKeys;
+      html+='<div style="margin-top:12px;padding:10px 12px;background:var(--surface3);border-radius:12px">';
+      html+='<div style="font-size:10px;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">\u{1F9FE} TICKETS POR TIENDA</div>';
+      _gProvKeys.forEach(function(prov,pi){
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;'+(pi>0?'margin-top:8px;':'')+'">';
+        html+='<span style="font-size:12px;color:var(--text)">\u{1F3EA} '+prov+' ('+_gProvs[prov]+' art.)</span>';
+        html+='<div style="display:flex;gap:4px">';
+        html+='<button onclick="_uploadTicket(window.'+_gArrKey+'['+pi+'],\''+g.fecha+'\',1)" style="background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 8px;font-size:11px;color:var(--text);cursor:pointer">\u{1F4F7} T1</button>';
+        html+='<button onclick="_uploadTicket(window.'+_gArrKey+'['+pi+'],\''+g.fecha+'\',2)" style="background:var(--surface2);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 8px;font-size:11px;color:var(--text2);cursor:pointer">T2</button>';
+        html+='</div></div>';
+      });
+      html+='</div>';
+    }
+
     html+='<button style="width:100%;margin-top:14px;padding:11px;background:none;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text2);font-size:13px;font-weight:400;cursor:pointer" onclick="completarPedido(\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+'\')">Cerrar lista de compra</button>';
     html+='</div>';
   });
-    // === Sección de tickets por tienda ===
-  var _hoyC=today();
-  var _miComprasHoy=S.compras.filter(function(c){return c.comprador===uName()&&c.fecha===_hoyC&&c.proveedor;});
-  var _provHoy={};
-  _miComprasHoy.forEach(function(c){if(!_provHoy[c.proveedor])_provHoy[c.proveedor]=0;_provHoy[c.proveedor]++;});
-  var _provKeys=Object.keys(_provHoy);
-  window._tickProv=_provKeys;
-  if(_provKeys.length){
-    html+='<div class="card" style="margin-top:14px;padding:14px 16px">';
-    html+='<div style="font-size:11px;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">\u{1F9FE} TICKETS POR TIENDA</div>';
-    _provKeys.forEach(function(prov,i){
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;'+(i<_provKeys.length-1?'border-bottom:1px solid rgba(255,255,255,.06)':'')+'">';
-      html+='<div><div style="font-size:13px;color:var(--text)">\u{1F3EA} '+prov+'</div>';
-      html+='<div style="font-size:11px;color:var(--text2)">'+_provHoy[prov]+' art\u00edculo'+(+_provHoy[prov]!==1?'s':'')+'</div></div>';
-      html+='<div style="display:flex;gap:6px">';
-      html+='<button onclick="_uploadTicket(window._tickProv['+i+'],\''+_hoyC+'\',1)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer">\u{1F4F7} Ticket 1</button>';
-      html+='<button onclick="_uploadTicket(window._tickProv['+i+'],\''+_hoyC+'\',2)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text2);cursor:pointer">+2</button>';
-      html+='</div></div>';
-    });
-    html+='</div>';
-  }
-return html;
+      return html;
 }
 
 function renderMiCuadre(){
@@ -692,26 +696,29 @@ function _mcSave2(uid,titulo,fecha,producto){
   if(qty<=0||pu<=0){toast('Pon cantidad y precio',1);return;}
   var total=qty*pu;
   var cat=S.catalogo.find(function(x){return x.producto===producto;});
-  var id=nextId('C',S.compras);
   var n=now();
-  var pedTag='[PED:'+titulo+'|'+fecha+']';
-  S.compras.unshift({id:id,fecha:n.date,hora:n.time,categoria:cat?.categoria||'',producto:producto,cantidad:qty,unidad:cat?.unidad||'',precio:total,proveedor:prov,ticket:ticket,comprador:uName(),notas:pedTag,_row:9999});
-  SyncQueue.add([
-    {sheet:'\u{1F9FE} Compras',values:[id,n.date,n.time,cat?.categoria||'',producto,qty,cat?.unidad||'',total,prov,ticket,uName(),pedTag],_priceUpdate:{producto:producto,precio:pu}},
-    {sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Compra (Mi Compra)',producto+' x'+qty+' '+fmt$(total),'compra']}
-  ],function(ok){if(ok)setTimeout(function(){Sheets.loadAll();},500);});
+  _mcBatch[uid]={qty:qty,pu:pu,total:total,prov:prov,ticket:ticket,producto:producto,titulo:titulo,fecha:fecha,cat:cat,ts:n};
   _mcExpanded[uid]=false;
-  _logGPS('compra',producto);
-  var _savedId=id,_savedFecha=n.date;
+  toast('\u{1F4DD} '+producto+' listo ('+fmt$(total)+')');
   render();
-  // Show toast with optional photo button
-  var _tb=document.createElement('div');
-  _tb.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.4);min-width:260px';
-  _tb.innerHTML='<span style="font-size:13px">\u2705 '+producto+' \u2014 '+fmt$(total)+'</span>'
-    +'<button onclick="_uploadTicket(\''+_savedId+'\',\''+_savedFecha+'\');this.parentNode.remove()" '
-    +'style="background:var(--surface3);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap">\u{1F4F7} Foto ticket</button>';
-  document.body.appendChild(_tb);
-  setTimeout(function(){if(_tb.parentNode)_tb.remove();},8000);
+}
+function _mcSaveAll(){
+  var keys=Object.keys(_mcBatch);
+  if(!keys.length)return;
+  var syncItems=[];
+  keys.forEach(function(uid){
+    var b=_mcBatch[uid];
+    var id=nextId('C',S.compras);
+    var pedTag='[PED:'+b.titulo+'|'+b.fecha+']';
+    S.compras.unshift({id:id,fecha:b.ts.date,hora:b.ts.time,categoria:b.cat?.categoria||'',producto:b.producto,cantidad:b.qty,unidad:b.cat?.unidad||'',precio:b.total,proveedor:b.prov,ticket:b.ticket,comprador:uName(),notas:pedTag,_row:9999});
+    syncItems.push({sheet:'\u{1F9FE} Compras',values:[id,b.ts.date,b.ts.time,b.cat?.categoria||'',b.producto,b.qty,b.cat?.unidad||'',b.total,b.prov,b.ticket,uName(),pedTag],_priceUpdate:{producto:b.producto,precio:b.pu}});
+    syncItems.push({sheet:'\u{1F4DC} Bit\u00e1cora',values:[b.ts.date,b.ts.time,uName(),'Compra (Mi Compra)',b.producto+' x'+b.qty+' '+fmt$(b.total),'compra']});
+    _logGPS('compra',b.producto);
+  });
+  _mcBatch={};
+  toast('\u2705 '+keys.length+' compra'+(keys.length>1?'s':'')+' guardada'+(keys.length>1?'s':'')+' \u2014 subiendo...');
+  SyncQueue.add(syncItems,function(ok){if(ok)setTimeout(function(){Sheets.loadAll();},500);else toast('\u26a0\ufe0f Error de sync',1);});
+  render();
 }
 
 function _uploadTicket(compraId,fecha){
