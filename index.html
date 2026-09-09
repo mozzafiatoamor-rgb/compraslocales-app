@@ -977,7 +977,38 @@ async function deletePedidoCompleto(titulo){if(!isAdmin())return;showConfirm("El
 async function reorderFaltantes(titulo,fecha){var items=S.pedidos.filter(function(p){return p.titulo===titulo&&p.fecha===fecha});var checkin=getCheckin(items,fecha,titulo);var faltantes=checkin.filter(function(c){return!c.completo&&c.faltante>0});if(!faltantes.length){toast('Todo completo',0);return}showWorking();var n=now();var newTitulo='Faltantes: '+titulo;var syncItems=[];var totalEst=0;faltantes.forEach(function(f){var id=nextId('PD',S.pedidos);var sub=f.precioRef*f.faltante;totalEst+=sub;S.pedidos.unshift({id:id,fecha:n.date,hora:n.time,titulo:newTitulo,producto:f.producto,cantidad:f.faltante,unidad:f.unidad,precioRef:f.precioRef,subtotal:sub,creador:uName(),estado:'Pendiente',_row:9999});syncItems.push({sheet:'\u{1F4CB} Pedidos',values:[id,n.date,n.time,newTitulo,f.producto,f.faltante,f.unidad,f.precioRef,sub,uName(),'Pendiente']})});syncItems.push({sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Pedido de faltantes',newTitulo+' - '+faltantes.length+' items - '+fmt$(totalEst),'pedido']});SyncQueue.add(syncItems,function(ok){if(ok)setTimeout(function(){Sheets.loadAll()},500)});toast('Pedido creado: '+faltantes.length+' faltantes');hideWorking();render()}
 
 let _cartPedido=[];
-function fmPedido(){var _ptitles=[...new Set(S.pedidos.map(function(p){return p.titulo}))].slice(0,15);var _dl='<datalist id="pdTList">'+_ptitles.map(function(t){return'<option value="'+t.replace(/"/g,'&quot;')+'">'+t+'</option>'}).join('')+'</datalist>';return'<div class="modal-title">\u{1F4CB} Nuevo Pedido</div>'+'<div class="form-group"><label class="form-label">T\u00edtulo del Pedido</label>'+'<input class="form-input" id="fPdT" list="pdTList" placeholder="Ej: Compras turno ma\u00f1ana" autocomplete="off">'+_dl+'</div>'+'<div style="height:1px;background:rgba(255,255,255,.06);margin:16px 0"></div><div class="form-group"><label class="form-label">Producto</label><div id="fPdPWrap"><div class="autocomplete-wrap"><input class="form-input" id="fPdP" placeholder="\u{1F50D} Buscar producto..." oninput="acInputPd()" onfocus="acInputPd()" autocomplete="off"><div class="autocomplete-list" id="fPdPList"></div></div></div></div><div id="fPdPriceInfo"></div><div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" id="fPdQ" type="number" inputmode="decimal" placeholder="0" min="0.1" step="0.1"></div><button class="btn btn-secondary" onclick="addToCartPedido()">\u2795 Agregar a lista</button><div id="cartPedido">'+renderCartPedido()+'</div><div class="cart-divider"></div><button class="btn btn-primary" onclick="submitCartPedido()" '+(_cartPedido.length===0?'disabled':'')+' id="btnSavePedido">\u2705 Crear Pedido ('+_cartPedido.length+')</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="closeModal()">\u2716 Cerrar</button>'}
+function _buildPedidoTitulo(){
+  var pv=(document.getElementById('fPdPide')||{}).value||'';
+  var av=(document.getElementById('fPdAnota')||{}).value||'';
+  var cv=(document.getElementById('fPdCompra')||{}).value||'';
+  var n=now();var d=n.date.split('-');var fecha=d[2]+'/'+d[1];
+  var names=[pv.trim(),av.trim(),cv.trim()].filter(Boolean).join(' / ');
+  var t=names?(names+' - '+fecha):'';
+  var el=document.getElementById('fPdT');if(el)el.value=t;
+}
+function fmPedido(){
+  var _compradores=(S.usuarios||[]).filter(function(u){return u.rol==='comprador';}).map(function(u){return u.nombre;});
+  var _compOpts=_compradores.map(function(n){return'<option value="'+n+'">'+n+'</option>';}).join('');
+  return'<div class="modal-title">\u{1F4CB} Nuevo Pedido</div>'
+  +'<div class="form-group"><label class="form-label">Qui\u00e9n pide</label>'
+  +'<input class="form-input" id="fPdPide" placeholder="Nombre de quien solicita" oninput="_buildPedidoTitulo()"></div>'
+  +'<div class="form-group"><label class="form-label">Quien anota</label>'
+  +'<input class="form-input" id="fPdAnota" value="'+uName()+'" oninput="_buildPedidoTitulo()"></div>'
+  +'<div class="form-group"><label class="form-label">Quien compra</label>'
+  +'<select class="form-input" id="fPdCompra" onchange="_buildPedidoTitulo()"><option value="">— Seleccionar —</option>'+_compOpts+'</select></div>'
+  +'<div class="form-group"><label class="form-label" style="color:var(--text2);font-size:11px">T\u00edtulo del pedido (editable)</label>'
+  +'<input class="form-input" id="fPdT" placeholder="Se genera autom\u00e1ticamente" style="color:var(--accent);font-weight:500"></div>'
+  +'<div style="height:1px;background:rgba(255,255,255,.06);margin:16px 0"></div>'
+  +'<div class="form-group"><label class="form-label">Producto</label><div id="fPdPWrap"><div class="autocomplete-wrap"><input class="form-input" id="fPdP" placeholder="\u{1F50D} Buscar producto..." oninput="acInputPd()" onfocus="acInputPd()" autocomplete="off"><div class="autocomplete-list" id="fPdPList"></div></div></div></div>'
+  +'<div id="fPdPriceInfo"></div>'
+  +'<div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" id="fPdQ" type="number" inputmode="decimal" placeholder="0" min="0.1" step="0.1"></div>'
+  +'<button class="btn btn-secondary" onclick="addToCartPedido()">\u2795 Agregar a lista</button>'
+  +'<div id="cartPedido">'+renderCartPedido()+'</div>'
+  +'<div class="cart-divider"></div>'
+  +'<button class="btn btn-primary" onclick="submitCartPedido()" '+(_cartPedido.length===0?'disabled':'')+' id="btnSavePedido">\u2705 Crear Pedido ('+_cartPedido.length+')</button>'
+  +'<div style="height:10px"></div>'
+  +'<button class="btn btn-secondary" onclick="closeModal()">\u2716 Cerrar</button>';
+}
 
 function updSelPd(cat){_acSelected.fPdP='';var wrap=document.getElementById('fPdPWrap');if(wrap)wrap.innerHTML='<div class="autocomplete-wrap"><input class="form-input" id="fPdP" placeholder="\u{1F50D} Buscar producto..." oninput="acInputPd()" onfocus="acInputPd()" autocomplete="off"><div class="autocomplete-list" id="fPdPList"></div></div>';var pi=document.getElementById('fPdPriceInfo');if(pi)pi.innerHTML=''}
 function acInputPd(){acInput('fPdP',S.catalogo,function(p){return p.producto},'prod')}
