@@ -225,8 +225,9 @@ function _logGPS(tipo,notas){
   var sid=_routeSessionId,ts=now();
   navigator.geolocation.getCurrentPosition(function(pos){
     var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
-    // Silent GPS write - does not go through SyncQueue to avoid error toasts
-    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:[{sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}]})}).catch(function(){});
+    // Silent GPS write
+    toast('\u{1F4CD} GPS: '+lat+','+lng+' ('+tipo+')',0);
+    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:[{sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}]})}).then(function(r){return r.json()}).then(function(d){if(!d.success)toast('Rutas err: '+d.error,1)}).catch(function(e){toast('Rutas fetch err',1)});
   },function(){},{timeout:8000,maximumAge:30000});
 }
 
