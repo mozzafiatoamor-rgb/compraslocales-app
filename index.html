@@ -676,14 +676,35 @@ function _mcSave2(uid,titulo,fecha,producto){
 
 function _renderRouteCard(){
   if(!isCajero()&&!isAdmin())return'';
-  var h='<div class="card" style="margin-bottom:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">';
+  var h='<div class="card" style="margin-bottom:14px;padding:16px">';
   if(_routeActive){
-    h+='<div><div style="font-size:11px;color:var(--text2);letter-spacing:.5px;margin-bottom:2px">RECORRIDO ACTIVO</div>';
-    h+='<div id="_routeTimer" style="font-size:22px;font-weight:600;color:var(--green)">'+_routeElapsed()+'</div></div>';
-    h+='<button onclick="_routeStop()" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer">\u{1F3C1}\u{FE0F} Finalizar</button>';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between">';
+    h+='<div>';
+    h+='<div style="font-size:11px;color:var(--text2);letter-spacing:.5px;margin-bottom:2px">RECORRIDO ACTIVO</div>';
+    if(_routePedido)h+='<div style="font-size:12px;color:var(--accent);margin-bottom:4px">'+_routePedido+'</div>';
+    h+='<div id="_routeTimer" style="font-size:28px;font-weight:600;color:var(--green)">'+_routeElapsed()+'</div>';
+    h+='</div>';
+    h+='<button onclick="_routeStop()" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer">\u{1F3C1} Finalizar</button>';
+    h+='</div>';
   }else{
-    h+='<div style="color:var(--text2);font-size:14px">\u{1F550} Sin recorrido activo</div>';
-    h+='<button onclick="_routeStart()" style="background:var(--accent);color:#0f172a;border:none;border-radius:20px;padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer">Iniciar recorrido</button>';
+    // Build list of unique pending pedidos
+    var _pedTitles=[];
+    var _seen={};
+    (S.pedidos||[]).filter(function(p){return p.estado!=='Archivado'&&p.estado!=='Completado';}).forEach(function(p){if(!_seen[p.titulo]){_seen[p.titulo]=1;_pedTitles.push(p.titulo);}});
+    h+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px;letter-spacing:.5px">\u{1F550} INICIAR RECORRIDO</div>';
+    if(_pedTitles.length){
+      _pedTitles.forEach(function(t){
+        h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)">';
+        h+='<span style="font-size:13px;color:var(--text)">'+t+'</span>';
+        h+='<button onclick="_routeStart('+JSON.stringify(t)+')" style="background:var(--accent);color:#0f172a;border:none;border-radius:16px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Iniciar</button>';
+        h+='</div>';
+      });
+    }else{
+      h+='<div style="display:flex;align-items:center;justify-content:space-between">';
+      h+='<span style="font-size:13px;color:var(--text2)">Sin listas pendientes</span>';
+      h+='<button onclick="_routeStart()" style="background:var(--surface3);color:var(--text);border:none;border-radius:16px;padding:6px 14px;font-size:12px;cursor:pointer">Recorrido general</button>';
+      h+='</div>';
+    }
   }
   return h+'</div>';
 }
