@@ -851,7 +851,7 @@ else if(S.tab==='bitacora'){let f=S.bitacora;if(S.filterDate)f=f.filter(b=>b.fec
 function _fpCards(){var el=document.getElementById('pendCards');if(!el){render();return;}S.searchQuery=document.getElementById('pendSrchInput')?document.getElementById('pendSrchInput').value:S.searchQuery;var grouped=getPedidosPendientes();var full=renderComprasPendientes(grouped,S.searchQuery);var m='<div id="pendCards">';var mi=full.indexOf(m);if(mi<0){render();return;}el.outerHTML=full.substring(mi);}
 let modalType=null;
 function renderModal(){if(!modalType)return'';let c='';if(modalType==='compra')c=fmCompra();if(modalType==='compraDirecta')c=fmCompraDirecta();if(modalType==='checkout')c=fmCheckout();if(modalType==='fondo')c=fmFondo();if(modalType==='devolucion')c=fmDevolucion();if(modalType==='pedido')c=fmPedido();if(modalType==='addProduct')c=fmAddProd();if(modalType==='editProduct')c=fmEditProd();if(modalType==='addProv')c=fmAddProv();if(modalType==='settings')c=fmSettings();if(modalType==='permisos')c=fmPermisos();if(modalType==='userMenu')c=fmUser();if(modalType==='editCompra')c=fmEditCompra();if(modalType==='editPedidoItem')c=fmEditPedidoItem();if(modalType==='editProv')c=fmEditProv();if(modalType==='adminCompra')c=fmAdminCompra();if(modalType==='addToPedido')c=fmAddToPedido();if(modalType==='reporteCorte')c=fmReporteCorte();return'<div class="modal-overlay active" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-handle"></div>'+c+'</div></div>'}
-function openModal(t){if((t==='addProduct'||t==='addProv')&&!canAddProduct()){toast('Solo admin/cocinero',1);hideWorking();return}if(t==='fondo'&&!canEditMoney()){toast('Solo admin/cajero',1);hideWorking();return}if(t==='devolucion'&&!canEditMoney()){toast('Solo admin/cajero',1);hideWorking();return}if(t==='pedido'&&!canOrder()){toast('Solo admin/cocinero',1);hideWorking();return}modalType=t;if(t!=='compra')clearCartCompra();_cartPedido=[];_acSelected={};render()}
+function openModal(t){if((t==='addProduct'||t==='addProv')&&!canAddProduct()){toast('Solo admin/cocinero',1);hideWorking();return}if(t==='fondo'&&!canEditMoney()){toast('Solo admin/cajero',1);hideWorking();return}if(t==='devolucion'&&!canEditMoney()){toast('Solo admin/cajero',1);hideWorking();return}if(t==='pedido'&&!canOrder()){toast('Solo admin/cocinero',1);hideWorking();return}modalType=t;if(t!=='compra')clearCartCompra();_cartPedido=[];_acSelected={};render();if(t==='pedido')setTimeout(_buildPedidoTitulo,50);}
 function closeModal(){if(modalType==='compra'&&_cartCompra.length>0){showConfirm('\u{1F6D2} Carrito pendiente','Tienes '+_cartCompra.length+' compras sin guardar. Se mantendr\u00e1n para despu\u00e9s.',function(){modalType=null;render()});return}modalType=null;clearCartCompra();render()}
 
 function fmUser(){return'<div class="modal-title">\u{1F464} Mi Cuenta</div><div style="text-align:center;margin-bottom:20px"><div style="width:60px;height:60px;border-radius:16px;background:var(--accent);color:#1a120e;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;margin:0 auto 12px">'+uInit()+'</div><div style="font-size:18px;font-weight:700">'+uName()+'</div><div style="font-size:13px;color:var(--text2);margin-top:4px">@'+(S.currentUser?.usuario||'')+'</div></div><button class="btn btn-danger" onclick="logout()">\u{1F6AA} Cerrar Sesi\u00f3n</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>'}
@@ -1053,15 +1053,17 @@ async function reorderFaltantes(titulo,fecha){var items=S.pedidos.filter(functio
 
 let _cartPedido=[];
 function _buildPedidoTitulo(){
-  var pv=(document.getElementById('fPdPide')||{}).value||'';
-  var av=(document.getElementById('fPdAnota')||{}).value||'';
-  var cv=(document.getElementById('fPdCompra')||{}).value||'';
   try{
-    var _nd=now();var _dp=_nd.date.split('-');var fecha=_dp[2]+'/'+_dp[1];
-    var names=[pv.trim(),av.trim(),cv.trim()].filter(Boolean).join(' / ');
+    var pv=String((document.getElementById('fPdPide')||{}).value||'').trim();
+    var av=String((document.getElementById('fPdAnota')||{}).value||'').trim();
+    var cv=String((document.getElementById('fPdCompra')||{}).value||'').trim();
+    if(cv==='— Seleccionar —')cv='';
+    var _nd=now();var _dp=(_nd.date||'').split('-');
+    var fecha=(_dp[2]||'')+'/'+(_dp[1]||'');
+    var names=[pv,av,cv].filter(function(x){return x&&x!=='undefined';}).join(' / ');
     var t=names?(names+' - '+fecha):'';
     var el=document.getElementById('fPdT');if(el)el.value=t;
-  }catch(e){}
+  }catch(e){console.error('buildTitulo',e);}
 }
 function fmPedido(){
   var _compradores=(S.usuarios||[]).filter(function(u){return u.rol==='comprador';}).map(function(u){return u.nombre;});
