@@ -690,7 +690,8 @@ function _renderRouteCard(){
     // Build list of unique pending pedidos
     var _pedTitles=[];
     var _seen={};
-    (S.pedidos||[]).filter(function(p){return p.estado!=='Archivado'&&p.estado!=='Completado';}).forEach(function(p){if(!_seen[p.titulo]){_seen[p.titulo]=1;_pedTitles.push(p.titulo);}});
+    var _hoy=today();
+    (S.pedidos||[]).filter(function(p){return p.estado!=='Archivado'&&p.estado!=='Completado'&&p.fecha===_hoy;}).forEach(function(p){if(!_seen[p.titulo]){_seen[p.titulo]=1;_pedTitles.push(p.titulo);}});
     h+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px;letter-spacing:.5px">\u{1F550} INICIAR RECORRIDO</div>';
     if(_pedTitles.length){
       _pedTitles.forEach(function(t){
