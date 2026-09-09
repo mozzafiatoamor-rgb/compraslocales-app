@@ -587,8 +587,8 @@ function renderMiCompra(){
       html+='<button onclick="_mcSaveAll()" style="width:100%;margin-top:12px;background:var(--green);color:#0f172a;border:none;border-radius:14px;padding:13px;font-size:14px;font-weight:600;cursor:pointer">\u{1F4BE} Guardar '+_pendBatch.length+' compra'+(_pendBatch.length>1?'s':'')+' \u2014 '+fmt$(_pendBatch.reduce(function(a,b){return a+b.total;},0))+'</button>';
     }
     var _gProvs={};
-    S.compras.filter(function(c){return c.notas&&c.notas.indexOf(_gTag)>=0&&c.ticket==='SI';}).forEach(function(c){var k=c.proveedor||'Ticket';if(!_gProvs[k])_gProvs[k]=0;_gProvs[k]++;});
-    Object.values(_mcBatch).filter(function(b){return b.titulo===g.titulo&&b.fecha===g.fecha&&b.ticket==='SI';}).forEach(function(b){var k=b.prov||'Ticket';if(!_gProvs[k])_gProvs[k]=0;_gProvs[k]++;});
+    S.compras.filter(function(c){return c.notas&&c.notas.indexOf(_gTag)>=0&&c.ticket==='SI';}).forEach(function(c){var k=c.proveedor||c.producto||'Ticket';if(!_gProvs[k])_gProvs[k]=0;_gProvs[k]++;});
+    Object.values(_mcBatch).filter(function(b){return b.titulo===g.titulo&&b.fecha===g.fecha&&b.ticket==='SI';}).forEach(function(b){var k=b.prov||b.producto||'Ticket';if(!_gProvs[k])_gProvs[k]=0;_gProvs[k]++;});
     var _gProvKeys=Object.keys(_gProvs);
     if(_gProvKeys.length){
       var _gArrKey='_gp'+Date.now();
@@ -596,7 +596,7 @@ function renderMiCompra(){
       html+='<div style="margin-top:12px;padding:10px 12px;background:var(--surface3);border-radius:12px">';
       html+='<div style="font-size:10px;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">\u{1F9FE} TICKETS POR TIENDA</div>';
       _gProvKeys.forEach(function(prov,pi){
-        var _label=prov==='Ticket'?'Ticket':prov;
+        var _label=prov;
         html+='<div style="'+(pi>0?'margin-top:8px;':'')+'display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
         html+='<button onclick="_uploadTicket(window.'+_gArrKey+'['+pi+'],\''+g.fecha+'\',1)" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;background:var(--surface2);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\u{1F4F7} '+_label+'</button>';
         html+='<button onclick="_uploadTicket(window.'+_gArrKey+'['+pi+'],\''+g.fecha+'\',2)" style="flex-shrink:0;background:var(--surface2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px 10px;font-size:11px;color:var(--text2);cursor:pointer">+T2</button>';
