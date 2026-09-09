@@ -545,7 +545,7 @@ function renderMiCompra(){
         html+='<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:.5">';
         html+='<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#0f172a" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>';
         html+='<div style="flex:1"><div style="font-size:14px;text-decoration:line-through;font-weight:300">'+c.producto+'</div>';
-        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px">'+c.qtyComprada+' '+c.unidad+'  \u00b7  '+fmt$(c.totalGastado)+(c.compras[0]&&c.compras[0].proveedor?'  \u00b7  '+c.compras[0].proveedor:'')+'</div></div></div>';
+        html+='<div style="font-size:11px;color:var(--text2);margin-top:2px">'+(_c0=>(c.qtyComprada+' '+c.unidad+'  \u00b7  '+fmt$(c.totalGastado)+(_c0.proveedor?'  \u00b7  \u{1F3EA} '+_c0.proveedor:'')+(_c0.ticket==='NO'?'  \u00b7  <span style="color:var(--red)">Sin ticket</span>':_c0.ticket==='SI'?'  \u00b7  <span style="color:var(--green)">\u2713 Ticket</span>':'')))(c.compras[0]||{})+'</div></div></div>';
       }else{
         html+='<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)">';
         html+='<div style="display:flex;gap:12px;align-items:flex-start;cursor:pointer" onclick="_mcToggle2(\''+uid+'\',\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+"','"+c.producto.replace(/'/g,"\\'")+"',"+c.faltante+",'"+c.unidad+"',"+c.precioRef+')">';
@@ -566,6 +566,9 @@ function renderMiCompra(){
           html+='<div id="mc2_pv_'+uid+'Wrap"><div class="autocomplete-wrap">';
           html+='<input class="form-input" id="mc2_pv_'+uid+'" placeholder="Buscar proveedor..." oninput="acInputFor(\'mc2_pv_'+uid+'\')" onfocus="acInputFor(\'mc2_pv_'+uid+'\')" autocomplete="off" style="padding:8px 10px;font-size:14px;border-radius:10px">';
           html+='<div class="autocomplete-list" id="mc2_pv_'+uid+'List"></div></div></div></div>';
+          html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;background:var(--surface3);border-radius:10px">';
+          html+='<input type="checkbox" id="mc2_tk_'+uid+'" checked style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">';
+          html+='<label for="mc2_tk_'+uid+'" style="font-size:13px;color:var(--text);cursor:pointer">\u{1F9FE} Entrega ticket</label></div>';
           html+='<button class="btn btn-success" style="width:100%;padding:11px;font-size:14px;font-weight:500;border-radius:12px" onclick="_mcSave2(\''+uid+'\',\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+"','"+c.producto.replace(/'/g,"\\'")+'\')">Guardar compra</button></div>';
         }
         html+='</div>';
@@ -579,7 +582,27 @@ function renderMiCompra(){
     html+='<button style="width:100%;margin-top:14px;padding:11px;background:none;border:1px solid rgba(255,255,255,.12);border-radius:12px;color:var(--text2);font-size:13px;font-weight:400;cursor:pointer" onclick="completarPedido(\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+'\')">Cerrar lista de compra</button>';
     html+='</div>';
   });
-  return html;
+    // === Sección de tickets por tienda ===
+  var _hoyC=today();
+  var _miComprasHoy=S.compras.filter(function(c){return c.comprador===uName()&&c.fecha===_hoyC&&c.proveedor;});
+  var _provHoy={};
+  _miComprasHoy.forEach(function(c){if(!_provHoy[c.proveedor])_provHoy[c.proveedor]=0;_provHoy[c.proveedor]++;});
+  var _provKeys=Object.keys(_provHoy);
+  if(_provKeys.length){
+    html+='<div class="card" style="margin-top:14px;padding:14px 16px">';
+    html+='<div style="font-size:11px;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">\u{1F9FE} TICKETS POR TIENDA</div>';
+    _provKeys.forEach(function(prov,i){
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;'+(i<_provKeys.length-1?'border-bottom:1px solid rgba(255,255,255,.06)':'')+'">';
+      html+='<div><div style="font-size:13px;color:var(--text)">\u{1F3EA} '+prov+'</div>';
+      html+='<div style="font-size:11px;color:var(--text2)">'+_provHoy[prov]+' art\u00edculo'+(+_provHoy[prov]!==1?'s':'')+'</div></div>';
+      html+='<div style="display:flex;gap:6px">';
+      html+='<button onclick="_uploadTicket('+JSON.stringify(prov)+',\''+_hoyC+'\',1)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer">\u{1F4F7} Ticket 1</button>';
+      html+='<button onclick="_uploadTicket('+JSON.stringify(prov)+',\''+_hoyC+'\',2)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text2);cursor:pointer">+2</button>';
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+return html;
 }
 
 function renderMiCuadre(){
@@ -664,23 +687,66 @@ function _mcSave2(uid,titulo,fecha,producto){
   var qty=parseFloat(document.getElementById('mc2_qty_'+uid)?.value)||0;
   var pu=parseFloat(document.getElementById('mc2_pu_'+uid)?.value)||0;
   var prov=(window._acSelected&&window._acSelected['mc2_pv_'+uid])||document.getElementById('mc2_pv_'+uid)?.value?.trim()||'';
+  var tkEl=document.getElementById('mc2_tk_'+uid);var ticket=(!tkEl||tkEl.checked)?'SI':'NO';
   if(qty<=0||pu<=0){toast('Pon cantidad y precio',1);return;}
   var total=qty*pu;
   var cat=S.catalogo.find(function(x){return x.producto===producto;});
   var id=nextId('C',S.compras);
   var n=now();
   var pedTag='[PED:'+titulo+'|'+fecha+']';
-  S.compras.unshift({id:id,fecha:n.date,hora:n.time,categoria:cat?.categoria||'',producto:producto,cantidad:qty,unidad:cat?.unidad||'',precio:total,proveedor:prov,ticket:'SI',comprador:uName(),notas:pedTag,_row:9999});
+  S.compras.unshift({id:id,fecha:n.date,hora:n.time,categoria:cat?.categoria||'',producto:producto,cantidad:qty,unidad:cat?.unidad||'',precio:total,proveedor:prov,ticket:ticket,comprador:uName(),notas:pedTag,_row:9999});
   SyncQueue.add([
-    {sheet:'\u{1F9FE} Compras',values:[id,n.date,n.time,cat?.categoria||'',producto,qty,cat?.unidad||'',total,prov,'SI',uName(),pedTag],_priceUpdate:{producto:producto,precio:pu}},
+    {sheet:'\u{1F9FE} Compras',values:[id,n.date,n.time,cat?.categoria||'',producto,qty,cat?.unidad||'',total,prov,ticket,uName(),pedTag],_priceUpdate:{producto:producto,precio:pu}},
     {sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Compra (Mi Compra)',producto+' x'+qty+' '+fmt$(total),'compra']}
   ],function(ok){if(ok)setTimeout(function(){Sheets.loadAll();},500);});
   _mcExpanded[uid]=false;
   _logGPS('compra',producto);
-  toast('\u2705 '+producto+' \u2014 '+fmt$(total));
+  var _savedId=id,_savedFecha=n.date;
   render();
+  // Show toast with optional photo button
+  var _tb=document.createElement('div');
+  _tb.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.4);min-width:260px';
+  _tb.innerHTML='<span style="font-size:13px">\u2705 '+producto+' \u2014 '+fmt$(total)+'</span>'
+    +'<button onclick="_uploadTicket(\''+_savedId+'\',\''+_savedFecha+'\');this.parentNode.remove()" '
+    +'style="background:var(--surface3);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap">\u{1F4F7} Foto ticket</button>';
+  document.body.appendChild(_tb);
+  setTimeout(function(){if(_tb.parentNode)_tb.remove();},8000);
 }
 
+function _uploadTicket(compraId,fecha){
+  var input=document.createElement('input');
+  input.type='file';input.accept='image/*';input.capture='environment';
+  input.onchange=function(){
+    var file=input.files[0];if(!file)return;
+    toast('\u{1F4F7} Comprimiendo...');
+    var img=new Image();
+    var reader=new FileReader();
+    reader.onload=function(e){
+      img.onload=function(){
+        var MAX=1200;var canvas=document.createElement('canvas');
+        var scale=Math.min(1,MAX/Math.max(img.width,img.height));
+        canvas.width=img.width*scale;canvas.height=img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        var b64=canvas.toDataURL('image/jpeg',0.75).split(',')[1];
+        var fname='ticket_'+compraId+'_'+fecha.replace(/-/g,'')+'.jpg';
+        toast('\u{1F4E4} Subiendo ticket...');
+        fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+          action:'saveFile',fileData:b64,mimeType:'image/jpeg',
+          fileName:fname,date:fecha,compraId:compraId
+        })}).then(function(r){return r.json();}).then(function(d){
+          if(d.success){
+            toast('\u{1F9FE} Ticket guardado en Drive \u2713');
+            // Save link to compra notes via append to Bitacora
+            SyncQueue.add([{sheet:'\u{1F4DC} Bit\u00e1cora',values:[fecha,'',uName(),'Ticket foto',compraId+' | '+d.fileUrl,'ticket']}]);
+          }else{toast('Error: '+(d.error||'sin respuesta'),1);}
+        }).catch(function(){toast('Sin conexi\u00f3n para subir ticket',1);});
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
 function _renderRouteCard(){
   if(!isCajero()&&!isAdmin())return'';
   var h='<div class="card" style="margin-bottom:14px;padding:16px">';
