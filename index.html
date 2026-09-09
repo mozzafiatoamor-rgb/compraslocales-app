@@ -225,7 +225,8 @@ function _logGPS(tipo,notas){
   var sid=_routeSessionId,ts=now();
   navigator.geolocation.getCurrentPosition(function(pos){
     var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
-    SyncQueue.add([{sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}],function(){});
+    // Silent GPS write - does not go through SyncQueue to avoid error toasts
+    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:[{sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']}]})}).catch(function(){});
   },function(){},{timeout:8000,maximumAge:30000});
 }
 
@@ -393,6 +394,18 @@ window.addEventListener('popstate',function(){
   history.pushState({tab:'home'},'');
 });
 function _initNav(){if(S.screen==='main')history.pushState({tab:S.tab||'home'},'');}
+
+
+// ─ One-time queue cleanup: remove stuck GPS items with old emoji sheet name
+(function(){
+  try{
+    var _sq=SyncQueue.queue;
+    var _sqc=_sq.filter(function(it){
+      return !it.sheet||it.sheet.indexOf('Rutas')<0||(it.sheet==='Rutas');
+    });
+    if(_sqc.length!==_sq.length){SyncQueue.queue=_sqc;console.log('Cleaned',_sq.length-_sqc.length,'stuck Rutas items');}
+  }catch(e){}
+})();
 
 function render(){const a=document.getElementById('app');document.body.classList.toggle('comprador-mode',isComprador());if(isComprador()&&!['micompra','micuadre'].includes(S.tab))S.tab='micompra';if(S.screen==='setup')a.innerHTML=renderSetup();else if(S.screen==='login')a.innerHTML=renderLogin();else{a.innerHTML=renderMain();if(S.tab==='reportes')requestAnimationFrame(initRptCharts)}}
 
