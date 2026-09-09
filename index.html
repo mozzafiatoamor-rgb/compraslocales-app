@@ -238,9 +238,9 @@ function _logGPS(tipo,notas){
   var sid=_routeSessionId,ts=now();
   navigator.geolocation.getCurrentPosition(function(pos){
     var lat=pos.coords.latitude.toFixed(6),lng=pos.coords.longitude.toFixed(6);
-    // GPS write with debug
+    // GPS write - uses same 'append' action as SyncQueue (already works)
     toast('\u{1F4CD} GPS '+tipo+': '+lat.slice(0,7)+','+lng.slice(0,7));
-    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:[{sheet:'Rutas',rows:[[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']]}]})}).then(function(r){return r.json();}).then(function(d){if(!d.success)toast('GPS err: '+d.error,1);else toast('\u{1F4CD} Guardado en Rutas \u2713');}).catch(function(e){toast('GPS sin conexion',1);});
+    fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'append',sheet:'Rutas',values:[sid,ts.date,ts.time,uName(),lat,lng,tipo||'auto',notas||'']})}).then(function(r){return r.json();}).then(function(d){if(!d.success)toast('GPS err: '+d.error,1);else toast('\u{1F4CD} Rutas \u2713');}).catch(function(e){toast('GPS sin red',1);});
   },function(){},{timeout:8000,maximumAge:30000});
 }
 
