@@ -203,11 +203,18 @@ var _routeSessionId=null;
     var rs=JSON.parse(localStorage.getItem('_routeState')||'null');
     if(rs&&rs.active){
       _routeActive=true;_routeStartMs=rs.startMs;_routeSessionId=rs.sessionId;
+      _routePedido=rs.pedido||null;
       _routeTimerInterval=setInterval(function(){var el=document.getElementById('_routeTimer');if(el)el.textContent=_routeElapsed();},10000);
       _routeGeoInterval=setInterval(function(){_logGPS('auto');},5*60*1000);
+      setTimeout(function(){_logGPS('apertura');},2000);
     }
   }catch(e){}
 })();
+
+// Log GPS cada vez que el comprador abre la app durante un recorrido
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&_routeActive)_logGPS('apertura');
+});
 
 function _routeStart(){
   if(_routeActive)return;
