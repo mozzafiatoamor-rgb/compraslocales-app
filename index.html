@@ -588,6 +588,7 @@ function renderMiCompra(){
   var _provHoy={};
   _miComprasHoy.forEach(function(c){if(!_provHoy[c.proveedor])_provHoy[c.proveedor]=0;_provHoy[c.proveedor]++;});
   var _provKeys=Object.keys(_provHoy);
+  window._tickProv=_provKeys;
   if(_provKeys.length){
     html+='<div class="card" style="margin-top:14px;padding:14px 16px">';
     html+='<div style="font-size:11px;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">\u{1F9FE} TICKETS POR TIENDA</div>';
@@ -596,8 +597,8 @@ function renderMiCompra(){
       html+='<div><div style="font-size:13px;color:var(--text)">\u{1F3EA} '+prov+'</div>';
       html+='<div style="font-size:11px;color:var(--text2)">'+_provHoy[prov]+' art\u00edculo'+(+_provHoy[prov]!==1?'s':'')+'</div></div>';
       html+='<div style="display:flex;gap:6px">';
-      html+='<button onclick="_uploadTicket('+JSON.stringify(prov)+',\''+_hoyC+'\',1)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer">\u{1F4F7} Ticket 1</button>';
-      html+='<button onclick="_uploadTicket('+JSON.stringify(prov)+',\''+_hoyC+'\',2)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text2);cursor:pointer">+2</button>';
+      html+='<button onclick="_uploadTicket(window._tickProv['+i+'],\''+_hoyC+'\',1)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text);cursor:pointer">\u{1F4F7} Ticket 1</button>';
+      html+='<button onclick="_uploadTicket(window._tickProv['+i+'],\''+_hoyC+'\',2)" style="background:var(--surface3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--text2);cursor:pointer">+2</button>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -765,12 +766,13 @@ function _renderRouteCard(){
     var _seen={};
     var _hoy=today();
     (S.pedidos||[]).filter(function(p){return p.estado!=='Archivado'&&p.estado!=='Completado'&&p.fecha===_hoy;}).forEach(function(p){if(!_seen[p.titulo]){_seen[p.titulo]=1;_pedTitles.push(p.titulo);}});
+    window._routePeds=_pedTitles;
     h+='<div style="font-size:12px;color:var(--text2);margin-bottom:10px;letter-spacing:.5px">\u{1F550} INICIAR RECORRIDO</div>';
     if(_pedTitles.length){
-      _pedTitles.forEach(function(t){
+      _pedTitles.forEach(function(t,i){
         h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)">';
         h+='<span style="font-size:13px;color:var(--text)">'+t+'</span>';
-        h+='<button onclick="_routeStart('+JSON.stringify(t)+')" style="background:var(--accent);color:#0f172a;border:none;border-radius:16px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Iniciar</button>';
+        h+='<button onclick="_routeStart(window._routePeds['+i+'])" style="background:var(--accent);color:#0f172a;border:none;border-radius:16px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Iniciar</button>';
         h+='</div>';
       });
     }else{
@@ -1054,10 +1056,12 @@ function _buildPedidoTitulo(){
   var pv=(document.getElementById('fPdPide')||{}).value||'';
   var av=(document.getElementById('fPdAnota')||{}).value||'';
   var cv=(document.getElementById('fPdCompra')||{}).value||'';
-  var n=now();var d=n.date.split('-');var fecha=d[2]+'/'+d[1];
-  var names=[pv.trim(),av.trim(),cv.trim()].filter(Boolean).join(' / ');
-  var t=names?(names+' - '+fecha):'';
-  var el=document.getElementById('fPdT');if(el)el.value=t;
+  try{
+    var _nd=now();var _dp=_nd.date.split('-');var fecha=_dp[2]+'/'+_dp[1];
+    var names=[pv.trim(),av.trim(),cv.trim()].filter(Boolean).join(' / ');
+    var t=names?(names+' - '+fecha):'';
+    var el=document.getElementById('fPdT');if(el)el.value=t;
+  }catch(e){}
 }
 function fmPedido(){
   var _compradores=(S.usuarios||[]).filter(function(u){return u.rol==='comprador';}).map(function(u){return u.nombre;});
@@ -1066,7 +1070,7 @@ function fmPedido(){
   +'<div class="form-group"><label class="form-label">Qui\u00e9n pide</label>'
   +'<input class="form-input" id="fPdPide" placeholder="Nombre de quien solicita" oninput="_buildPedidoTitulo()"></div>'
   +'<div class="form-group"><label class="form-label">Quien anota</label>'
-  +'<input class="form-input" id="fPdAnota" value="'+uName()+'" oninput="_buildPedidoTitulo()"></div>'
+  +'<input class="form-input" id="fPdAnota" value="'+(uName()||'')+'" oninput="_buildPedidoTitulo()"></div>'
   +'<div class="form-group"><label class="form-label">Quien compra</label>'
   +'<select class="form-input" id="fPdCompra" onchange="_buildPedidoTitulo()"><option value="">— Seleccionar —</option>'+_compOpts+'</select></div>'
   +'<div class="form-group"><label class="form-label" style="color:var(--text2);font-size:11px">T\u00edtulo del pedido (editable)</label>'
