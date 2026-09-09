@@ -395,7 +395,7 @@ function hideWorking(){var ov=document.getElementById('workingOv');if(ov)ov.remo
 function showConfirm(title,msg,onYes){window._confirmYes=onYes;const cd=document.getElementById('confirmDialog');cd.style.display='block';cd.innerHTML='<div class="confirm-overlay" onclick="if(event.target===this)hideConfirm()"><div class="confirm-box"><div class="confirm-title">'+title+'</div><div class="confirm-msg">'+msg+'</div><div class="confirm-btns"><button class="btn btn-secondary btn-sm" onclick="hideConfirm()">Cancelar</button><button class="btn btn-danger btn-sm" onclick="hideConfirm();window._confirmYes()">Confirmar</button></div></div></div>'}
 function hideConfirm(){document.getElementById('confirmDialog').style.display='none'}
 
-let _acSelected={};
+var _acSelected={};
 function acInput(inputId,list,labelFn,addFn){const v=document.getElementById(inputId).value.toLowerCase();const el=document.getElementById(inputId+'List');if(!v){el.className='autocomplete-list';return}const f=list.filter(p=>labelFn(p).toLowerCase().includes(v));const addBtn=addFn==='prod'?'<div class="autocomplete-item" style="color:var(--blue);font-weight:600" data-id="'+inputId+'" data-nm="'+document.getElementById(inputId).value+'" onclick="acOpenAddProd(this.dataset.id,this.dataset.nm)">\u2795 Agregar &ldquo;'+document.getElementById(inputId).value+'&rdquo; como nuevo producto</div>':addFn?'<div class="autocomplete-item" style="color:var(--green);font-weight:600" data-id="'+inputId+'" data-nm="'+document.getElementById(inputId).value+'" onclick="acAddNewProv(this.dataset.id,this.dataset.nm)">\u2795 Agregar &ldquo;'+document.getElementById(inputId).value+'&rdquo; como nuevo proveedor</div>':'';if(!f.length){el.innerHTML='<div class="autocomplete-item" style="color:var(--text2)">Sin resultados</div>'+addBtn;el.className='autocomplete-list open';return}el.innerHTML=f.slice(0,15).map(p=>{const lb=labelFn(p);const i=lb.toLowerCase().indexOf(v);const catLabel=p.categoria?'<span class="ac-cat">'+p.categoria+'</span>':'';return'<div class="autocomplete-item" onclick="acPick(\''+inputId+'\',\''+lb.replace(/'/g,"\\'")+'\')"><div>'+lb.substring(0,i)+'<span class="ac-match">'+lb.substring(i,i+v.length)+'</span>'+lb.substring(i+v.length)+'</div>'+catLabel+'</div>'}).join('')+addBtn;el.className='autocomplete-list open'}
 function acPick(inputId,val){_acSelected[inputId]=val;const wrap=document.getElementById(inputId+'Wrap');wrap.innerHTML='<div class="ac-selected"><strong>'+val+'</strong><button class="ac-clear" onclick="acClearC(\''+inputId+'\')">\u2716</button></div>'}
 function acClearC(inputId){_acSelected[inputId]='';const wrap=document.getElementById(inputId+'Wrap');const handler=inputId==='fPdP'?'acInputPd()':'acInputFor(\''+inputId+'\')';wrap.innerHTML='<div class="autocomplete-wrap"><input class="form-input" id="'+inputId+'" placeholder="\u{1F50D} Buscar..." oninput="'+handler+'" onfocus="'+handler+'" autocomplete="off"><div class="autocomplete-list" id="'+inputId+'List"></div></div>'}
@@ -690,7 +690,7 @@ function _mcAutoSave(uid){
   var qty=parseFloat((document.getElementById('mc2_qty_'+uid)||{}).value)||0;
   var pu=parseFloat((document.getElementById('mc2_pu_'+uid)||{}).value)||0;
   if(qty<=0||pu<=0)return;
-  var prov=(window._acSelected&&window._acSelected['mc2_pv_'+uid])||(document.getElementById('mc2_pv_'+uid)||{}).value||'';
+  var prov=(_acSelected['mc2_pv_'+uid])||(document.getElementById('mc2_pv_'+uid)||{}).value||'';
   prov=(prov||'').trim();
   var tkEl=document.getElementById('mc2_tk_'+uid);var ticket=(!tkEl||tkEl.checked)?'SI':'NO';
   var cat=S.catalogo.find(function(x){return x.producto===meta.producto;});
@@ -707,7 +707,7 @@ function _mcCalc2(uid){
 function _mcSave2(uid,titulo,fecha,producto){
   var qty=parseFloat(document.getElementById('mc2_qty_'+uid)?.value)||0;
   var pu=parseFloat(document.getElementById('mc2_pu_'+uid)?.value)||0;
-  var prov=(window._acSelected&&window._acSelected['mc2_pv_'+uid])||document.getElementById('mc2_pv_'+uid)?.value?.trim()||'';
+  var prov=(_acSelected['mc2_pv_'+uid])||(document.getElementById('mc2_pv_'+uid)||{}).value||'';prov=(prov||'').trim();
   var tkEl=document.getElementById('mc2_tk_'+uid);var ticket=(!tkEl||tkEl.checked)?'SI':'NO';
   if(qty<=0||pu<=0){toast('Pon cantidad y precio',1);return;}
   var total=qty*pu;
