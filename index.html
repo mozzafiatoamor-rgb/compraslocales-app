@@ -1171,6 +1171,12 @@ async function deletePedidoCompleto(titulo){if(!isAdmin())return;showConfirm("El
 async function reorderFaltantes(titulo,fecha){var items=S.pedidos.filter(function(p){return p.titulo===titulo&&p.fecha===fecha});var checkin=getCheckin(items,fecha,titulo);var faltantes=checkin.filter(function(c){return!c.completo&&c.faltante>0});if(!faltantes.length){toast('Todo completo',0);return}showWorking();var n=now();var newTitulo='Faltantes: '+titulo;var syncItems=[];var totalEst=0;faltantes.forEach(function(f){var id=nextId('PD',S.pedidos);var sub=f.precioRef*f.faltante;totalEst+=sub;S.pedidos.unshift({id:id,fecha:n.date,hora:n.time,titulo:newTitulo,producto:f.producto,cantidad:f.faltante,unidad:f.unidad,precioRef:f.precioRef,subtotal:sub,creador:uName(),estado:'Pendiente',_row:9999});syncItems.push({sheet:'\u{1F4CB} Pedidos',values:[id,n.date,n.time,newTitulo,f.producto,f.faltante,f.unidad,f.precioRef,sub,uName(),'Pendiente']})});syncItems.push({sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Pedido de faltantes',newTitulo+' - '+faltantes.length+' items - '+fmt$(totalEst),'pedido']});SyncQueue.add(syncItems,function(ok){if(ok)setTimeout(function(){Sheets.loadAll()},500)});toast('Pedido creado: '+faltantes.length+' faltantes');hideWorking();render()}
 
 let _cartPedido=[];
+function _abbrName(n){
+  if(!n)return'';
+  return n.trim().split(/\s+/).map(function(w){
+    return w.slice(0,1).toUpperCase()+w.slice(1,3).toLowerCase();
+  }).join('');
+}
 function _buildPedidoTitulo(){
   try{
     var pv=String((document.getElementById('fPdPide')||{}).value||'').trim();
@@ -1179,8 +1185,8 @@ function _buildPedidoTitulo(){
     if(cv==='— Seleccionar —')cv='';
     var _nd=now();var _dp=(_nd.date||'').split('-');
     var fecha=(_dp[2]||'')+'/'+(_dp[1]||'');
-    var names=[pv,av,cv].filter(function(x){return x&&x!=='undefined';}).join(' / ');
-    var t=names?(names+' - '+fecha):'';
+    var parts=[pv,av,cv].filter(function(x){return x&&x!=='undefined';}).map(_abbrName);
+    var t=parts.length?(parts.join('/')+' '+fecha):'';
     var el=document.getElementById('fPdT');if(el)el.value=t;
   }catch(e){console.error('buildTitulo',e);}
 }
