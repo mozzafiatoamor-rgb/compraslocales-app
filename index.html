@@ -477,6 +477,7 @@ function _renderNav(){
     nav+=nb('catalogo','\u{1F4E6}','Catálogo');
     nav+=nb('bitacora','\u{1F4DC}','Bitácora');
     nav+=nb('reportes','\u{1F4CA}','Reportes');
+    if(isCajero())nav+=nb('micompra','\u{1F4F7}','Tickets');
   }
   nav+='</nav>';
   return nav;
