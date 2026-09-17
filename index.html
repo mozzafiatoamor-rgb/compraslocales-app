@@ -467,8 +467,8 @@ var alertsBanner=renderSheetAlerts();
 return'<div class="status-bar"><div class="status-left"><div class="status-dot '+sc+'"></div>'+(_sqp>0?'<span style="font-size:10px;color:var(--yellow);font-weight:700;animation:pulse 2s infinite">\u21bb'+_sqp+'</span>':'')+(S.sheetAlerts&&S.sheetAlerts.some(function(a){return a.critico})?'<span style="font-size:10px;color:var(--red);font-weight:700;animation:pulse 2s infinite">\u{1F6A8}</span>':S.sheetAlerts&&S.sheetAlerts.length?'<span style="font-size:10px;color:var(--yellow);font-weight:700">\u26a0\ufe0f</span>':'')+'<img src="'+LOGO+'" class="app-logo" onerror="this.textContent=\'\u{1F6D2}\'"></div><div class="status-right"><button class="user-badge" onclick="openModal(\'userMenu\')"><div class="user-avatar">'+uInit()+'</div><span class="user-name">'+uName()+'</span></button><button class="config-btn" onclick="openModal(\'settings\')">\u2699\ufe0f</button></div></div><div class="main-content" id="mc">'+(S.loading?'<div class="empty-state"><div class="empty-icon">\u23f3</div><p>Cargando...</p></div>':(alertsBanner?'<div style="padding:0 0 4px">'+alertsBanner+'</div>':'')+c)+'</div>'+_renderNav()+renderModal()}
 
 var _navOpen=false;
-function _toggleNav(e){if(e)e.stopPropagation();_navOpen=!_navOpen;var el=document.getElementById('_navDock');if(el)el.outerHTML=_renderNav();}
-function _closeNav(){if(!_navOpen)return;_navOpen=false;var el=document.getElementById('_navDock');if(el)el.outerHTML=_renderNav();}
+function _toggleNav(e){if(e)e.stopPropagation();_navOpen=!_navOpen;var el=document.getElementById('_navWrap');if(el)el.outerHTML=_renderNav();}
+function _closeNav(){if(!_navOpen)return;_navOpen=false;var el=document.getElementById('_navWrap');if(el)el.outerHTML=_renderNav();}
 function _renderNav(){
   var t=S.tab;
   var TABS_ALL=isComprador()
@@ -490,10 +490,10 @@ function _renderNav(){
     });
     return '<div class="nav-dock-items">'+btns.join('')+'</div>';
   })():'';
-  return overlay+'<nav class="bottom-nav" id="_navDock">'
+  return '<div id="_navWrap">'+overlay+'<nav class="bottom-nav">'
     +items
     +'<div class="nav-dock-fab" onclick="_toggleNav(event)">'+cur[1]+'</div>'
-    +'</nav>';
+    +'</nav></div>';
 }
 
 function switchTab(t){if(isComprador()&&t==='home')t='micompra';S.tab=t;S.searchQuery='';S.filterDate='';S.rptProdSearch='';render()}
