@@ -496,7 +496,7 @@ function _renderNav(){
     +'</nav></div>';
 }
 
-function switchTab(t){if(isComprador()&&t==='home')t='micompra';S.tab=t;S.searchQuery='';S.filterDate='';S.rptProdSearch='';render()}
+function switchTab(t){if(isComprador()&&t==='home')t='micompra';S.tab=t;S.searchQuery='';S.filterDate=(t==='compras'||t==='pedidos'||t==='bitacora')?today():'';S.rptProdSearch='';render()}
 
 function renderMiCompra(){
   if(isComprador()&&S.tab==='home'){S.tab='micompra';return renderMiCompra();}
