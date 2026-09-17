@@ -1700,6 +1700,10 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.addEventListener('controllerchange',function(){
       window.location.reload();
     });
+    // SW avisa cuando activó y tomó control → recargar para obtener versión fresca
+    navigator.serviceWorker.addEventListener('message',function(e){
+      if(e.data&&e.data.type==='SW_UPDATED')window.location.reload();
+    });
   });
 }
 </script>
