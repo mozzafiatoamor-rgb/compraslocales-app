@@ -1328,6 +1328,8 @@ function renderReportes(){
   var compras=data.compras;var pedidos=data.pedidos;var fondos=data.fondos;
 
   var totalGastado=compras.reduce(function(s,c){return s+c.precio},0);
+  var totalGastadoCaja=compras.filter(function(c){return c.ticket==='SI'||c.ticket==='NO'}).reduce(function(s,c){return s+c.precio},0);
+  var totalGastadoOtros=compras.filter(function(c){return c.ticket!=='SI'&&c.ticket!=='NO'}).reduce(function(s,c){return s+c.precio},0);
   var totalAsignado=fondos.filter(function(f){return f.tipo==='Asignacion'||f.tipo==='Asignación'}).reduce(function(s,f){return s+f.monto},0);
   var totalDevuelto=fondos.filter(function(f){return f.tipo==='Devolucion'||f.tipo==='Devolución'}).reduce(function(s,f){return s+f.monto},0);
   var numCompras=compras.length;
@@ -1429,7 +1431,7 @@ function renderReportes(){
   if(sec==='general'){
     html+='<div class="stats-grid"><div class="stat-box red"><div class="stat-number">'+fmt$(totalGastado)+'</div><div class="stat-label">Total Gastado</div></div>';
     html+='<div class="stat-box green"><div class="stat-number">'+fmt$(totalAsignado)+'</div><div class="stat-label">Total Asignado</div></div>';
-    html+='<div class="stat-box blue"><div class="stat-number">'+fmt$(totalAsignado-totalGastado)+'</div><div class="stat-label">Diferencia</div></div>';
+    html+=(totalGastadoOtros>0?'<div class="stat-box red"><div class="stat-number">'+fmt$(totalGastadoCaja)+'</div><div class="stat-label">De Caja</div></div>'+'<div class="stat-box" style="background:rgba(139,92,246,.18)"><div class="stat-number" style="color:#a78bfa">'+fmt$(totalGastadoOtros)+'</div><div class="stat-label">Otras Formas</div></div>'+'<div class="stat-box green"><div class="stat-number">'+fmt$(totalAsignado-totalGastadoCaja)+'</div><div class="stat-label">En Caja</div></div>':'<div class="stat-box blue"><div class="stat-number">'+fmt$(totalAsignado-totalGastado)+'</div><div class="stat-label">Diferencia</div></div>');
     html+='<div class="stat-box orange"><div class="stat-number">'+numCompras+'</div><div class="stat-label">Compras</div></div>';
     html+='<div class="stat-box yellow"><div class="stat-number">'+fmt$(promedio)+'</div><div class="stat-label">Promedio/Compra</div></div>';
     html+='<div class="stat-box cyan"><div class="stat-number">'+pedidosPend.length+'</div><div class="stat-label">Pedidos Pend.</div></div></div>';
