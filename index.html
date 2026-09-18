@@ -1374,10 +1374,13 @@ function renderReportes(){
     byProducto[c.producto].total+=c.precio;byProducto[c.producto].qty+=c.cantidad;byProducto[c.producto].compras++;
 
     var comp=c.comprador||'Sin asignar';
-    if(!byComprador[comp])byComprador[comp]={total:0,items:0,categorias:{}};
+    if(!byComprador[comp])byComprador[comp]={total:0,items:0,caja:0,externo:0,categorias:{},comprasList:[]};
     byComprador[comp].total+=c.precio;byComprador[comp].items++;
+    if(c.ticket==='SI'||c.ticket==='NO')byComprador[comp].caja+=c.precio;
+    else byComprador[comp].externo+=c.precio;
     if(!byComprador[comp].categorias[cat])byComprador[comp].categorias[cat]=0;
     byComprador[comp].categorias[cat]+=c.precio;
+    byComprador[comp].comprasList.push(c);
 
     var prov=c.proveedor||'Sin proveedor';
     if(!byProveedor[prov])byProveedor[prov]={total:0,items:0};
@@ -1496,13 +1499,43 @@ function renderReportes(){
   }
 
   if(sec==='personas'){
-    html+='<div class="rpt-section"><div class="rpt-section-title">\u{1F6D2} Compradores (quien compro)</div>';
+    var _fds=fondos;// for devuelto lookup
+    html+='<div class="rpt-section"><div class="rpt-section-title">\u{1F6D2} Compradores</div>';
     if(compSorted.length===0){html+='<div class="rpt-empty">Sin datos</div>'}
-    else{compSorted.forEach(function(entry){var name=entry[0];var d=entry[1];var pct=totalGastado>0?Math.round(d.total/totalGastado*100):0;var topCats=Object.entries(d.categorias).sort(function(a,b){return b[1]-a[1]}).slice(0,3);
-      html+='<div class="rpt-person-card"><div class="rpt-person-header"><div class="rpt-person-av" style="background:var(--accent);color:#1a120e">'+name.split(' ').map(function(w){return w[0]}).join('').toUpperCase().slice(0,2)+'</div><div><div class="rpt-person-name">'+name+'</div><div class="rpt-person-role">Comprador &middot; '+pct+'% del gasto</div></div></div>';
-      html+='<div class="rpt-person-stats"><div class="rpt-person-stat"><div class="ps-val" style="color:var(--red)">'+fmt$(d.total)+'</div><div class="ps-lbl">Gastado</div></div><div class="rpt-person-stat"><div class="ps-val" style="color:var(--accent)">'+d.items+'</div><div class="ps-lbl">Compras</div></div><div class="rpt-person-stat"><div class="ps-val">'+fmt$(d.items>0?d.total/d.items:0)+'</div><div class="ps-lbl">Promedio</div></div></div>';
-      if(topCats.length>0)html+='<div style="margin-top:8px;font-size:11px;color:var(--text2)">Principales: '+topCats.map(function(tc){return tc[0]+' ('+fmt$(tc[1])+')'}).join(', ')+'</div>';
-      html+='</div>'})}
+    else{compSorted.forEach(function(entry){
+      var name=entry[0];var d=entry[1];
+      var pct=totalGastadoCompradores>0?Math.round(d.caja/totalGastadoCompradores*100):0;
+      var topCats=Object.entries(d.categorias).sort(function(a,b){return b[1]-a[1]}).slice(0,3);
+      var _devComp=_fds.filter(function(f){return (f.tipo==='Devoluci\u00f3n')&&f.responsable===name}).reduce(function(s,f){return s+f.monto},0);
+      var _asgComp=_fds.filter(function(f){return (f.tipo==='Asignaci\u00f3n')&&f.para===name}).reduce(function(s,f){return s+f.monto},0);
+      var key='comp_'+name.replace(/[^a-zA-Z0-9]/g,'_');
+      var isOpen=S._rptOpenDetails[key];
+      html+='<div class="rpt-person-card" style="cursor:pointer" onclick="rptToggleDetail(\''+key+'\')">';
+      html+='<div class="rpt-person-header">';
+      html+='<div class="rpt-person-av" style="background:var(--accent);color:#1a120e">'+name.split(' ').map(function(w){return w[0]}).join('').toUpperCase().slice(0,2)+'</div>';
+      html+='<div style="flex:1"><div class="rpt-person-name">'+name+'</div>';
+      html+='<div class="rpt-person-role">'+pct+'% del gasto · '+d.items+' compras</div></div>';
+      html+='<div style="font-size:18px;color:var(--text2)">'+( isOpen?'\u25b2':'\u25bc')+'</div></div>';
+      html+='<div class="rpt-person-stats">';
+      html+='<div class="rpt-person-stat"><div class="ps-val" style="color:var(--red)">'+fmt$(d.caja)+'</div><div class="ps-lbl">💵 De caja</div></div>';
+      if(d.externo>0)html+='<div class="rpt-person-stat"><div class="ps-val" style="color:#c4b5fd">'+fmt$(d.externo)+'</div><div class="ps-lbl">🏦 Ext/Trans</div></div>';
+      if(_devComp>0)html+='<div class="rpt-person-stat"><div class="ps-val" style="color:var(--blue)">'+fmt$(_devComp)+'</div><div class="ps-lbl">🔄 Devuelto</div></div>';
+      if(_asgComp>0)html+='<div class="rpt-person-stat"><div class="ps-val" style="color:var(--green)">'+fmt$(_asgComp)+'</div><div class="ps-lbl">💵 Asignado</div></div>';
+      html+='</div>';
+      if(topCats.length>0)html+='<div style="margin:6px 0 8px;font-size:11px;color:var(--text2)">'+topCats.map(function(tc){return tc[0]+' ('+fmt$(tc[1])+')'}).join(' · ')+'</div>';
+      html+='<div id="rptDetail_'+key+'" class="rpt-detail-list'+(isOpen?' open':'')+'">'; 
+      var _sortedCompras=d.comprasList.slice().sort(function(a,b){return b.precio-a.precio});
+      _sortedCompras.forEach(function(c){
+        var _tk=c.ticket==='SI'?'💵':c.ticket==='NO'?'💸':c.ticket==='TRANS'?'🏦':'🌐';
+        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">';
+        html+='<div><div style="font-weight:500">'+_tk+' '+c.producto+'</div>';
+        html+='<div style="color:var(--text2);font-size:11px">'+c.cantidad+' '+c.unidad+' · '+c.proveedor+' · '+c.fecha+'</div></div>';
+        html+='<div style="font-weight:600;color:'+(c.ticket==='SI'||c.ticket==='NO'?'var(--red)':'#c4b5fd')+'">'+ fmt$(c.precio)+'</div></div>';
+      });
+      if(_sortedCompras.length===0)html+='<div style="color:var(--text2);font-size:12px;padding:8px 0">Sin compras</div>';
+      html+='</div>';
+      html+='</div>';
+    })}
     html+='</div><div class="rpt-divider"></div>';
     html+='<div class="rpt-section"><div class="rpt-section-title">\u{1F4CB} Solicitantes (quien pidio)</div>';
     if(creSorted.length===0){html+='<div class="rpt-empty">Sin pedidos</div>'}
