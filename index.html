@@ -593,9 +593,18 @@ function renderMiCompra(){
           html+='<div id="mc2_pv_'+uid+'Wrap"><div class="autocomplete-wrap">';
           html+='<input class="form-input" id="mc2_pv_'+uid+'" placeholder="Buscar proveedor..." oninput="acInputFor(\'mc2_pv_'+uid+'\')" onfocus="acInputFor(\'mc2_pv_'+uid+'\')" autocomplete="off" style="padding:8px 10px;font-size:14px;border-radius:10px">';
           html+='<div class="autocomplete-list" id="mc2_pv_'+uid+'List"></div></div></div></div>';
-          html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;background:var(--surface3);border-radius:10px">';
-          html+='<select id="mc2_tk_'+uid+'" class="form-select" style="font-size:12px;padding:6px 8px" onchange="_mcToggleUpload(\''+uid+'\'\,this.value)"><option value="SI">🧾 Caja</option><option value="NO">💸 Sin ticket</option><option value="TRANS">🏦 Transfer.</option><option value="EXT">🌐 Foráneo</option></select>';
-          html+='<button id="mc2_up_'+uid+'" onclick="_uploadTicket((document.getElementById(\'mc2_pv_'+uid+'\')?.value)||\'tienda\',\''+g.fecha+'\',1)" style="background:rgba(100,210,200,.15);border:1px solid rgba(100,210,200,.5);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;flex-shrink:0">📷 Ticket</button>';
+            html+='<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;padding:10px;background:var(--surface3);border-radius:10px">';
+          html+='<div style="display:flex;align-items:center;gap:8px">';
+          html+='<span style="font-size:11px;color:var(--text2);min-width:44px">Origen:</span>';
+          html+='<select id="mc2_src_'+uid+'" class="form-select" style="font-size:12px;padding:6px 8px;flex:1" onchange="_mcSrcChange(\''+uid+'\',this.value)"><option value="CAJA">💵 Caja</option><option value="TRANS">🏦 Transfer.</option><option value="EXT">🌐 Foráneo</option></select>';
+          html+='</div>';
+          html+='<div id="mc2_tkrow_'+uid+'" style="display:flex;align-items:center;gap:8px">';
+          html+='<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;flex:1">';
+          html+='<input type="checkbox" id="mc2_tk2_'+uid+'" checked style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" onchange="_mcSrcChange(\''+uid+'\',document.getElementById(\'mc2_src_'+uid+'\').value)">';
+          html+='🧾 Tiene ticket</label>';
+          html+='<button id="mc2_up_'+uid+'" onclick="_uploadTicket((document.getElementById(\'mc2_pv_'+uid+'\')?.value)||\'tienda\',\''+g.fecha+'\',1)" style="background:rgba(100,210,200,.15);border:1px solid rgba(100,210,200,.5);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap">📷 Foto</button>';
+          html+='</div>';
+          html+='</div>';
           html+='<button style="width:100%;margin-top:4px;padding:10px;background:rgba(100,210,120,.15);border:1px solid var(--green);border-radius:12px;color:var(--green);font-size:13px;font-weight:500;cursor:pointer" onclick="_mcSave2(\''+uid+'\',\''+g.titulo.replace(/'/g,"\\'")+"','"+g.fecha+"','"+c.producto.replace(/'/g,"\\'")+'\')">\u2713 Listo</button></div>';
         }
         html+='</div>';
@@ -718,7 +727,7 @@ function _mcAutoSave(uid){
   if(qty<=0||pu<=0)return;
   var prov=(_acSelected['mc2_pv_'+uid])||(document.getElementById('mc2_pv_'+uid)||{}).value||'';
   prov=(prov||'').trim();
-  var tkEl=document.getElementById('mc2_tk_'+uid);var ticket=tkEl?tkEl.value:'SI';
+  var srcEl=document.getElementById('mc2_src_'+uid);var src=srcEl?srcEl.value:'CAJA';var ticket=(src==='TRANS')?'TRANS':(src==='EXT')?'EXT':((document.getElementById('mc2_tk2_'+uid)?.checked!==false)?'SI':'NO');
   var cat=S.catalogo.find(function(x){return x.producto===meta.producto;});
   _mcBatch[uid]={qty:qty,pu:pu,total:qty*pu,prov:prov,ticket:ticket,producto:meta.producto,titulo:meta.titulo,fecha:meta.fecha,cat:cat,ts:now()};
 }
@@ -730,7 +739,7 @@ function _mcCalc2(uid){
   if(el)el.innerHTML=qty>0&&pu>0?'<div style="background:var(--surface3);border-radius:8px;padding:7px 10px;font-size:13px;font-weight:300;display:flex;justify-content:space-between"><span style="color:var(--text2)">'+qty+' \u00d7 '+fmt$(pu)+'</span><span style="font-weight:500;color:var(--accent)">'+fmt$(qty*pu)+'</span></div>':'';
 }
 
-function _mcToggleUpload(uid,val){var el=document.getElementById('mc2_up_'+uid);if(el)el.style.display=val==='SI'?'inline-block':'none';}
+function _mcSrcChange(uid,src){var row=document.getElementById('mc2_tkrow_'+uid);if(row)row.style.display=src==='CAJA'?'flex':'none';var upBtn=document.getElementById('mc2_up_'+uid);if(upBtn&&src==='CAJA'){var ckd=document.getElementById('mc2_tk2_'+uid)?.checked!==false;upBtn.style.display=ckd?'inline-block':'none';}}
 function _mcSave2(uid,titulo,fecha,producto){
   var qty=parseFloat(document.getElementById('mc2_qty_'+uid)?.value)||0;
   var pu=parseFloat(document.getElementById('mc2_pu_'+uid)?.value)||0;
