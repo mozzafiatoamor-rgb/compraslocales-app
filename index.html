@@ -1443,9 +1443,9 @@ function renderReportes(){
 
   html+='<div class="tab-pills" style="margin-bottom:16px">';
   html+='<button class="tab-pill '+(sec==='general'?'active':'')+'" onclick="S.rptSection=\'general\';render()">\u{1F4B0} General</button>';
+  html+='<button class="tab-pill '+(sec==='personas'?'active':'')+'" onclick="S.rptSection=\'personas\';render()">\u{1F464} Personas</button>';
   html+='<button class="tab-pill '+(sec==='categorias'?'active':'')+'" onclick="S.rptSection=\'categorias\';render()">\u{1F4E6} Categorias</button>';
   html+='<button class="tab-pill '+(sec==='productos'?'active':'')+'" onclick="S.rptSection=\'productos\';render()">\u{1F6D2} Productos</button>';
-  html+='<button class="tab-pill '+(sec==='personas'?'active':'')+'" onclick="S.rptSection=\'personas\';render()">\u{1F464} Personas</button>';
   html+='<button class="tab-pill '+(sec==='proveedores'?'active':'')+'" onclick="S.rptSection=\'proveedores\';render()">\u{1F3EA} Proveedores</button>';
   html+='<button class="tab-pill '+(sec==='pendientes'?'active':'')+'" onclick="S.rptSection=\'pendientes\';render()">\u26A0\uFE0F Sin Comprar</button>';
   html+='<button class="tab-pill '+(sec==='diario'?'active':'')+'" onclick="S.rptSection=\'diario\';render()">\u{1F4C5} Por Dia</button>';
