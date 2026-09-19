@@ -586,13 +586,13 @@ function renderMiCompra(){
         html+='<div style="font-size:11px;font-weight:500;color:var(--accent);padding-top:2px">'+(expanded?'cancelar':_inBatch?'editar':'registrar')+'</div></div>';
         if(expanded){
           html+='<div style="background:var(--surface2);border-radius:12px;padding:12px;margin-top:8px">';
-          html+='<div style="display:flex;gap:8px;margin-bottom:10px">';
-          html+='<div style="flex:1"><div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:400;letter-spacing:.5px">CANTIDAD</div>';
+          html+='<div style="margin-bottom:10px">';
+          html+='<div style="font-size:10px;color:var(--text2);margin-bottom:6px;font-weight:400;letter-spacing:.5px">CANTIDAD</div>';
           var _catUnit=(cat&&cat.unidad)?cat.unidad:'pza';
           var _unitOpts=['kg','pza','lt','paq','caja','bolsa','bote','manojo'].map(function(u){return '<option value="'+u+'"'+(u===_catUnit?' selected':'')+'>'+u+'</option>';}).join('');
-          html+='<div style="display:flex;gap:4px"><input class="form-input" id="mc2_qty_'+uid+'" type="number" inputmode="decimal" value="'+c.faltante+'" step="0.1" min="0.01" style="padding:8px 10px;font-size:15px;font-weight:400;border-radius:10px;flex:1;min-width:0"><select id="mc2_un_'+uid+'" class="form-select" style="font-size:13px;padding:6px 4px;border-radius:10px;min-width:56px">'+_unitOpts+'</select></div></div>';
-          html+='<div style="flex:1"><div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:400;letter-spacing:.5px">PRECIO UNIT $</div>';
-          html+='<input class="form-input" id="mc2_pu_'+uid+'" type="number" inputmode="decimal" placeholder="'+(c.precioRef>0?c.precioRef.toFixed(2):'0.00')+'" step="0.01" min="0" style="padding:8px 10px;font-size:15px;font-weight:400;border-radius:10px" oninput="_mcCalc2(\''+uid+'\')"></div></div>';
+          html+='<div style="display:flex;gap:8px"><input class="form-input" id="mc2_qty_'+uid+'" type="number" inputmode="decimal" value="'+c.faltante+'" step="0.1" min="0.01" style="padding:12px 14px;font-size:20px;font-weight:400;border-radius:10px;flex:1;min-width:0"><select id="mc2_un_'+uid+'" class="form-select" style="font-size:14px;padding:10px 8px;border-radius:10px;min-width:72px">'+_unitOpts+'</select></div></div>';
+          html+='<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--text2);margin-bottom:6px;font-weight:400;letter-spacing:.5px">PRECIO UNIT $</div>';
+          html+='<input class="form-input" id="mc2_pu_'+uid+'" type="number" inputmode="decimal" placeholder="'+(c.precioRef>0?c.precioRef.toFixed(2):'0.00')+'" step="0.01" min="0" style="padding:12px 14px;font-size:20px;font-weight:400;border-radius:10px;width:100%;box-sizing:border-box" oninput="_mcCalc2(\''+uid+'\')">'+'</div>';
           html+='<div id="mc2_tot_'+uid+'" style="margin-bottom:10px"></div>';
           html+='<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:400;letter-spacing:.5px">PROVEEDOR</div>';
           html+='<div id="mc2_pv_'+uid+'Wrap"><div class="autocomplete-wrap">';
