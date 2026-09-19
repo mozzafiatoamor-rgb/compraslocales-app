@@ -567,6 +567,7 @@ function renderMiCompra(){
     checkin.forEach(function(c,i){
       var uid=k.replace(/[^a-z0-9]/gi,'_')+'_'+i;
       var expanded=_mcExpanded[uid];
+      var cat=S.catalogo.find(function(x){return x.producto===c.producto;});
       if(c.completo){
         html+='<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:.5">';
         html+='<div style="width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#0f172a" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>';
@@ -752,7 +753,7 @@ function _mcSave2(uid,titulo,fecha,producto){
   var qty=parseFloat(document.getElementById('mc2_qty_'+uid)?.value)||0;
   var pu=parseFloat(document.getElementById('mc2_pu_'+uid)?.value)||0;
   var prov=(_acSelected['mc2_pv_'+uid])||(document.getElementById('mc2_pv_'+uid)||{}).value||'';prov=(prov||'').trim();
-  var tkEl=document.getElementById('mc2_tk_'+uid);var ticket=tkEl?tkEl.value:'SI';
+  var srcEl2=document.getElementById('mc2_src_'+uid);var src2=srcEl2?srcEl2.value:'CAJA';var ticket=(src2==='TRANS')?'TRANS':(src2==='EXT')?'EXT':((document.getElementById('mc2_tk2_'+uid)?.checked!==false)?'SI':'NO');
   if(qty<=0||pu<=0){toast('Pon cantidad y precio',1);return;}
   var total=qty*pu;
   var cat=S.catalogo.find(function(x){return x.producto===producto;});var unEl=document.getElementById('mc2_un_'+uid);var unidad=unEl?unEl.value:((cat&&cat.unidad)?cat.unidad:'pza');
