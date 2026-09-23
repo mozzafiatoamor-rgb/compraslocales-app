@@ -931,9 +931,9 @@ function _uploadTicket(prov,fecha,idx){
           fileName:fname,date:fecha,proveedor:prov||''
         })}).then(function(r){return r.json();})).then(function(d){
           if(d.success){
-            toast('\u{1F9FE} Ticket guardado en Drive \u2713');
+            toast('\u{1F9FE} Ticket guardado \u2713');
             // Save link to compra notes via append to Bitacora
-            SyncQueue.add([{sheet:'\u{1F4DC} Bit\u00e1cora',values:[fecha,'',uName(),'Ticket foto',compraId+' | '+d.fileUrl,'ticket']}]);
+            SyncQueue.add([{sheet:'\u{1F4DC} Bit\u00e1cora',values:[fecha,'',uName(),'Ticket foto',(prov||'ticket')+' '+(fecha||'')+' | '+(d.fileUrl||''),'ticket']}]);
           }else{toast('Error: '+(d.error||'sin respuesta'),1);}
         }).catch(function(){toast('Sin conexi\u00f3n para subir ticket',1);});
       };
