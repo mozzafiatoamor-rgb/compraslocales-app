@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
   <link rel="manifest" href="manifest.json">
+<script src="vendor/supabase.js"></script>
   <meta name="theme-color" content="#22c55e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -279,13 +280,57 @@ var _reporteCorteDate='';
 var _acAddProdSource='';
 var _acAddProdReturnModal='';
 
+/* ===== Capa Supabase (rama migración) ===== */
+let BACKEND=localStorage.getItem('backend_compras')||'sheets';
+let SUPA_URL=localStorage.getItem('supaUrl_compras')||'';
+let SUPA_KEY=localStorage.getItem('supaKey_compras')||'';
+let _supaClient=null;
+function _sb(){if(!_supaClient){if(!window.supabase||!SUPA_URL||!SUPA_KEY)throw new Error('Supabase no configurado');_supaClient=window.supabase.createClient(SUPA_URL,SUPA_KEY);}return _supaClient;}
+const SB_MAP={
+'\u{1F6D2} Catálogo':{t:'catalogo',cols:['id','categoria','producto','unidad','precio_ref','activo']},
+'\u{1F3EA} Proveedores':{t:'proveedores',cols:['id','nombre','tipo','activo']},
+'\u{1F9FE} Compras':{t:'compras',cols:['id','fecha','hora','categoria','producto','cantidad','unidad','precio','proveedor','ticket','comprador','notas']},
+'\u{1F4B5} Fondos':{t:'fondos',cols:['id','fecha','hora','tipo','monto','responsable','notas','para']},
+'\u{1F4DC} Bitácora':{t:'bitacora',cols:['fecha','hora','usuario','accion','detalle','tipo']},
+'\u{1F4CB} Pedidos':{t:'pedidos',cols:['id','fecha','hora','titulo','producto','cantidad','unidad','precio_ref','subtotal','creador','estado']},
+'Rutas':{t:'rutas',cols:['sesion','fecha','hora','comprador','lat','lng','tipo','notas']},
+'\u{1F464} Usuarios':{t:'usuarios',cols:['id','usuario','password','nombre','rol']},
+'⚙️ Config':{t:'config',cols:['key','value']}
+};
+function _sbRowObj(sh,v){var m=SB_MAP[sh];var o={};m.cols.forEach(function(c,i){var val=(v[i]===undefined||v[i]==='')?null:v[i];o[c]=val;});return o;}
+async function _sbRead(sh,rg){var m=SB_MAP[sh];if(!m)return [];var lim=10000;var mm=(''+rg).match(/(\d+)\s*$/);if(mm){var n=parseInt(mm[1]);if(n>1)lim=n-1;}var res=await _sb().from(m.t).select('seq,'+m.cols.join(',')).order('seq',{ascending:true}).limit(lim);if(res.error)throw new Error(res.error.message);var data=res.data||[];S._rowMap=S._rowMap||{};S._rowMap[sh]=data.map(function(r){return r.seq;});return data.map(function(r){return m.cols.map(function(c){var val=r[c];return (val===null||val===undefined)?'':String(val);});});}
+async function _sbAppend(sh,v){var m=SB_MAP[sh];if(!m)throw new Error('Hoja desconocida: '+sh);var res=await _sb().from(m.t).insert(_sbRowObj(sh,v));if(res.error)throw new Error(res.error.message);return {success:true};}
+async function _sbBatch(items){var groups={};items.forEach(function(it){var m=SB_MAP[it.sheet];if(!m)return;if(!groups[m.t])groups[m.t]=[];groups[m.t].push(_sbRowObj(it.sheet,it.values));});for(var t in groups){var res=await _sb().from(t).insert(groups[t]);if(res.error)throw new Error(res.error.message);}return {success:true};}
+async function _sbDelete(sh,rowNum){var m=SB_MAP[sh];if(!m)throw new Error('Hoja desconocida: '+sh);var seq=(S._rowMap&&S._rowMap[sh])?S._rowMap[sh][rowNum-2]:null;if(seq===null||seq===undefined)throw new Error('Fila no encontrada');var res=await _sb().from(m.t).delete().eq('seq',seq);if(res.error)throw new Error(res.error.message);return {success:true};}
+function _b64ToBlob(b64,mime){var bin=atob(b64);var len=bin.length;var arr=new Uint8Array(len);for(var i=0;i<len;i++){arr[i]=bin.charCodeAt(i);}return new Blob([arr],{type:mime||'image/jpeg'});}
+async function _sbSaveFile(b64,fname){try{var path=Date.now()+'_'+fname;var blob=_b64ToBlob(b64,'image/jpeg');var up=await _sb().storage.from('tickets').upload(path,blob,{contentType:'image/jpeg',upsert:true});if(up.error)return {success:false,error:up.error.message};var pub=_sb().storage.from('tickets').getPublicUrl(path);return {success:true,fileUrl:(pub.data&&pub.data.publicUrl)||''};}catch(e){return {success:false,error:e.message};}}
+async function _sheetReadRaw(sh,rg){var r=await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+S.sheetId+'/values/'+encodeURIComponent(sh)+'!'+rg+'?key='+S.apiKey);if(!r.ok)throw new Error(r.status);var d=await r.json();return d.values||[];}
+function _sbSettingsHTML(){return '<div style="height:12px;border-top:1px solid rgba(255,255,255,.08);margin:10px 0"></div>'+'<div class="form-group"><label class="form-label">Supabase URL</label><input class="form-input" value="'+SUPA_URL+'" id="spU" style="font-size:11px" placeholder="https://xxxx.supabase.co"></div>'+'<div class="form-group"><label class="form-label">Supabase anon/publishable key</label><input class="form-input" value="'+SUPA_KEY+'" id="spK" type="password" style="font-size:11px"></div>'+'<div class="form-group" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="spBk" '+(BACKEND==='supabase'?'checked':'')+'> <label class="form-label" style="margin:0">Usar Supabase (nube)</label></div>'+'<button class="btn btn-secondary" onclick="migrarASupabase(this)" style="color:var(--cyan)">☁️ Migrar Sheets → Supabase</button><div style="height:10px"></div>';}
+async function migrarASupabase(btn){
+ if(!S.sheetId||!S.apiKey){toast('Faltan Sheet ID / API Key de Google',1);return;}
+ if(!SUPA_URL||!SUPA_KEY){toast('Configura Supabase (URL y key) primero',1);return;}
+ if(!confirm('Migrar TODOS los datos de Google Sheets a Supabase?\nAGREGA registros en Supabase. Hazlo solo UNA vez sobre tablas vacias.'))return;
+ if(btn){btn.disabled=true;btn.textContent='⏳ Migrando...';}
+ var defs=[['\u{1F6D2} Catálogo','A2:F2000'],['\u{1F3EA} Proveedores','A2:D500'],['\u{1F9FE} Compras','A2:L20000'],['\u{1F4B5} Fondos','A2:H10000'],['\u{1F4DC} Bitácora','A2:F20000'],['\u{1F4CB} Pedidos','A2:K20000'],['Rutas','A2:H20000'],['\u{1F464} Usuarios','A2:E500'],['⚙️ Config','A2:B500']];
+ var report=[];
+ for(var di=0;di<defs.length;di++){
+  var sh=defs[di][0],rg=defs[di][1];var rows=[];
+  try{rows=await _sheetReadRaw(sh,rg);}catch(e){report.push(sh+': ERROR lectura');continue;}
+  rows=rows.filter(function(r){return r&&r.join('').trim()!=='';});
+  if(!rows.length){report.push(sh+': 0');continue;}
+  try{for(var i=0;i<rows.length;i+=200){var chunk=rows.slice(i,i+200).map(function(r){return {sheet:sh,values:r};});await _sbBatch(chunk);}report.push(sh+': '+rows.length+' OK');}
+  catch(e){report.push(sh+': ERROR insert ('+e.message+')');}
+ }
+ if(btn){btn.disabled=false;btn.textContent='☁️ Migrar Sheets → Supabase';}
+ alert('Resultado de migracion:\n\n'+report.join('\n'));
+}
 const Sheets={
-  async read(sh,rg){const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${S.sheetId}/values/${encodeURIComponent(sh)}!${rg}?key=${S.apiKey}`);if(!r.ok)throw new Error(r.status);const d=await r.json();return d.values||[]},
-  async append(sh,v){const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'append',sheet:sh,values:v})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
-  async deleteRow(sh,rowNum){const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'delete',sheet:sh,row:rowNum})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
-  async updatePrice(producto,precioUnit){try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'updatePrice',producto:producto,precio:precioUnit})})}catch(e){}},
+  async read(sh,rg){if(BACKEND==='supabase'){return await _sbRead(sh,rg);}const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${S.sheetId}/values/${encodeURIComponent(sh)}!${rg}?key=${S.apiKey}`);if(!r.ok)throw new Error(r.status);const d=await r.json();return d.values||[]},
+  async append(sh,v){if(BACKEND==='supabase'){return await _sbAppend(sh,v);}const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'append',sheet:sh,values:v})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
+  async deleteRow(sh,rowNum){if(BACKEND==='supabase'){return await _sbDelete(sh,rowNum);}const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'delete',sheet:sh,row:rowNum})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
+  async updatePrice(producto,precioUnit){if(BACKEND==='supabase'){try{await _sb().from('catalogo').update({precio_ref:precioUnit}).eq('producto',producto);}catch(e){}return;}try{await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'updatePrice',producto:producto,precio:precioUnit})})}catch(e){}},
   async loadUsers(){try{const rows=await this.read('\u{1F464} Usuarios','A2:E50');S.usuarios=rows.map(r=>({id:r[0]||'',usuario:r[1]||'',password:r[2]||'',nombre:r[3]||'',rol:(r[4]||'comprador').toLowerCase()})).filter(u=>u.usuario);return true}catch(e){console.error(e);return false}},
-  async batchAppend(items){const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:items})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
+  async batchAppend(items){if(BACKEND==='supabase'){return await _sbBatch(items);}const r=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'batchAppend',items:items})});const d=await r.json();if(!d.success)throw new Error(d.error);return d},
   async loadAll(){S.loading=true;render();try{
     // L\u00edmites de lectura por sheet \u2014 expandidos para mayor capacidad
     var LIM={catalogo:500,proveedores:100,compras:5000,fondos:2000,bitacora:2000,pedidos:2000};
@@ -802,10 +847,10 @@ function _uploadTicket(prov,fecha,idx){
         var provClean=(prov||'ticket').replace(/[^a-zA-Z0-9\u00C0-\u024F]/g,'_').slice(0,25);
         var fname=provClean+'_'+(idx||1)+'.jpg';
         toast('\u{1F4E4} Subiendo ticket de '+(prov||'tienda')+'...');
-        fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+        (BACKEND==='supabase'?_sbSaveFile(b64,fname):fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
           action:'saveFile',fileData:b64,mimeType:'image/jpeg',
           fileName:fname,date:fecha,proveedor:prov||''
-        })}).then(function(r){return r.json();}).then(function(d){
+        })}).then(function(r){return r.json();})).then(function(d){
           if(d.success){
             toast('\u{1F9FE} Ticket guardado en Drive \u2713');
             // Save link to compra notes via append to Bitacora
@@ -958,7 +1003,7 @@ function checkDupProd(val){var el=document.getElementById('dupProdWarn');if(!el)
 function fmAddProv(){return'<div class="modal-title">\u{1F3EA} Nuevo Proveedor</div><div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="fPvN" placeholder="Ej: Fruter\u00eda Don Juan"></div><div class="form-group"><label class="form-label">Tipo</label><select class="form-select" id="fPvT"><option value="Local">Local</option><option value="Cadena">Cadena/Supermercado</option><option value="Mayorista">Mayorista</option></select></div><button class="btn btn-success" onclick="subNewProv()">\u2705 Agregar</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="closeModal()">\u2716 Cerrar</button>'}
 
 function _forceUpdate(btn){if(btn){btn.disabled=true;btn.textContent='\u23F3 Buscando...',btn.style.opacity='.6';}if(!('serviceWorker' in navigator)){window.location.reload();return;}navigator.serviceWorker.getRegistration().then(function(reg){if(!reg){window.location.reload();return;}function applyUpdate(r){r.waiting.postMessage({type:'SKIP_WAITING'});toast('\u{1F504} Actualizando...');}if(reg.waiting){applyUpdate(reg);return;}reg.update().then(function(){setTimeout(function(){navigator.serviceWorker.getRegistration().then(function(r2){if(r2&&r2.waiting){applyUpdate(r2);}else{toast('\u2705 Ya tienes la versión más reciente',0);if(btn){btn.disabled=false;btn.textContent='\u{1F504} Forzar actualización';btn.style.opacity='1';}}});},800);}).catch(function(){window.location.reload();});});}
-function fmSettings(){return'<div class="modal-title">\u2699\ufe0f Config</div><div class="form-group"><label class="form-label">Sheet ID</label><input class="form-input" value="'+S.sheetId+'" id="sS" style="font-size:11px"></div><div class="form-group"><label class="form-label">API Key</label><input class="form-input" value="'+S.apiKey+'" id="sA" type="password" style="font-size:11px"></div><div class="form-group"><label class="form-label">Script URL</label><input class="form-input" value="'+SCRIPT_URL+'" id="sU" style="font-size:11px"></div><button class="btn btn-primary" onclick="saveSett()">\u{1F4BE} Guardar</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="resetApp()" style="color:var(--red)">\u{1F5D1} Desconectar</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="_forceUpdate(this)" style="color:var(--blue);border-color:rgba(59,130,246,.4)">\u{1F504} Forzar actualización</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>'+(!isAdmin()?'':'<div style="height:10px"></div><button class="btn btn-primary" style="background:var(--blue)" onclick="openModal(\'permisos\')">\u{1F512} Permisos por Rol</button>')+''}
+function fmSettings(){return'<div class="modal-title">\u2699\ufe0f Config</div><div class="form-group"><label class="form-label">Sheet ID</label><input class="form-input" value="'+S.sheetId+'" id="sS" style="font-size:11px"></div><div class="form-group"><label class="form-label">API Key</label><input class="form-input" value="'+S.apiKey+'" id="sA" type="password" style="font-size:11px"></div><div class="form-group"><label class="form-label">Script URL</label><input class="form-input" value="'+SCRIPT_URL+'" id="sU" style="font-size:11px"></div>'+_sbSettingsHTML()+'<button class="btn btn-primary" onclick="saveSett()">\u{1F4BE} Guardar</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="resetApp()" style="color:var(--red)">\u{1F5D1} Desconectar</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="_forceUpdate(this)" style="color:var(--blue);border-color:rgba(59,130,246,.4)">\u{1F504} Forzar actualización</button><div style="height:10px"></div><button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>'+(!isAdmin()?'':'<div style="height:10px"></div><button class="btn btn-primary" style="background:var(--blue)" onclick="openModal(\'permisos\')">\u{1F512} Permisos por Rol</button>')+''}
 
 function fmPermisos(){if(!isAdmin())return'<div class="modal-title">\u{1F512} Sin acceso</div>';var P=S.permisos;var roles=['cajero','cocinero','comprador'];var roleLabels={'cajero':'\u{1F4B0} Cajero','cocinero':'\u{1F373} Cocinero','comprador':'\u{1F6D2} Comprador'};var perms=[{k:'reportesWA',l:'\u{1F4F2} Enviar reportes WhatsApp'},{k:'verFondos',l:'\u{1F4B5} Ver fondos y caja'},{k:'registrarCompras',l:'\u{1F6D2} Registrar compras'},{k:'gestionarCatalogo',l:'\u{1F4E6} Gestionar cat\u00e1logo'}];var html='<div class="modal-title">\u{1F512} Permisos por Rol</div>';html+='<div style="font-size:11px;color:var(--text2);margin-bottom:12px">Admin siempre tiene todos los permisos.</div>';html+='<table style="width:100%;border-collapse:collapse;font-size:12px">';html+='<tr><th style="text-align:left;padding:6px 4px;color:var(--text2)">Permiso</th>';roles.forEach(function(r){html+='<th style="text-align:center;padding:6px 4px;font-size:11px;color:var(--green)">'+roleLabels[r]+'</th>';});html+='</tr>';perms.forEach(function(pm,pi){html+='<tr style="background:'+(pi%2===0?'var(--surface2)':'transparent')+'"><td style="padding:8px 4px;font-weight:500">'+pm.l+'</td>';roles.forEach(function(r){var checked=!!(P[r]&&P[r][pm.k])?'checked':'';html+='<td style="text-align:center;padding:8px 4px">';html+='<input type="checkbox" data-rol="'+r+'" data-perm="'+pm.k+'" '+checked+' style="width:18px;height:18px;accent-color:var(--green);cursor:pointer">';html+='</td>';});html+='</tr>';});html+='</table>';html+='<div style="height:16px"></div>';html+='<button class="btn btn-success" onclick="savePermisos()">\u2705 Guardar</button>';html+='<div style="height:8px"></div>';html+='<button class="btn btn-secondary" onclick="closeModal()">\u2716 Cancelar</button>';return html;}
 async function savePermisos(){var boxes=document.querySelectorAll('#modal input[type=checkbox][data-rol]');var nuevoP={cajero:{reportesWA:false,verFondos:false,registrarCompras:false,gestionarCatalogo:false},cocinero:{reportesWA:false,verFondos:false,registrarCompras:false,gestionarCatalogo:false},comprador:{reportesWA:false,verFondos:false,registrarCompras:false,gestionarCatalogo:false}};boxes.forEach(function(b){if(nuevoP[b.dataset.rol])nuevoP[b.dataset.rol][b.dataset.perm]=b.checked;});S.permisos=nuevoP;var json=JSON.stringify(nuevoP);localStorage.setItem('permisos_mzf',json);var n=now();SyncQueue.add([{sheet:'\u{1F4DC} Bit\u00e1cora',values:[n.date,n.time,uName(),'Permisos actualizados','permisos guardados','config']}]);try{await Sheets.append('\u2699\ufe0f Config',['permisos',json]);}catch(_){}toast('\u2705 Permisos guardados');closeModal();}
@@ -1277,7 +1322,7 @@ document.addEventListener('change',function(e){if(e.target.id==='fEPC'){var f=do
 
 async function saveEditProd(){showWorking();if(!_editProd||!isAdmin())return;var cat=document.getElementById('fEPC').value;var nc=document.getElementById('fECN')?.value?.trim()||'';var _nom=document.getElementById('fEPN')?.value.trim()||'';var _marca=document.getElementById('fEPM')?.value.trim()||'';var _pres=document.getElementById('fEPE')?.value.trim()||'';var nm=buildProdName(_nom,_marca,_pres);var un=document.getElementById('fEPU').value;var pr=document.getElementById('fEPP').value||'0';if(cat==='__new__'){if(!nc){toast('Escribe categor\u00eda',1);hideWorking();return}cat=nc}if(!cat||!_nom||!_marca||!_pres){toast('Completa nombre, marca y presentaci\u00f3n',1);hideWorking();return}try{await Sheets.deleteRow('\u{1F6D2} Cat\u00e1logo',_editProd._row);_editProd.categoria=cat;_editProd.producto=nm;_editProd.unidad=un;_editProd.precioRef=parseFloat(pr);SyncQueue.add([{sheet:'\u{1F6D2} Cat\u00e1logo',values:[_editProd.id,cat,nm,un,parseFloat(pr),'SI']}],function(ok){if(ok)setTimeout(function(){Sheets.loadAll()},500)});logAction('Producto editado',_editProd.producto+' \u2192 '+nm,'edit');toast(nm+' actualizado');_editProd=null;closeModal();hideWorking();render()}catch(e){toast('Error',1);hideWorking()}}
 
-function saveSett(){S.sheetId=document.getElementById('sS').value;S.apiKey=document.getElementById('sA').value;SCRIPT_URL=document.getElementById('sU').value;localStorage.setItem('sheetId_compras',S.sheetId);localStorage.setItem('apiKey_compras',S.apiKey);localStorage.setItem('scriptUrl_compras',SCRIPT_URL);toast('Guardado');closeModal();Sheets.loadAll()}
+function saveSett(){S.sheetId=document.getElementById('sS').value;S.apiKey=document.getElementById('sA').value;SCRIPT_URL=document.getElementById('sU').value;localStorage.setItem('sheetId_compras',S.sheetId);localStorage.setItem('apiKey_compras',S.apiKey);localStorage.setItem('scriptUrl_compras',SCRIPT_URL);var _su=document.getElementById('spU'),_sk=document.getElementById('spK'),_bk=document.getElementById('spBk');if(_su){SUPA_URL=_su.value.trim();localStorage.setItem('supaUrl_compras',SUPA_URL);}if(_sk){SUPA_KEY=_sk.value.trim();localStorage.setItem('supaKey_compras',SUPA_KEY);}if(_bk){BACKEND=_bk.checked?'supabase':'sheets';localStorage.setItem('backend_compras',BACKEND);}_supaClient=null;toast('Guardado');closeModal();Sheets.loadAll()}
 function resetApp(){localStorage.removeItem('sheetId_compras');localStorage.removeItem('apiKey_compras');localStorage.removeItem('scriptUrl_compras');localStorage.removeItem('currentUser_compras');S.sheetId='';S.apiKey='';SCRIPT_URL='';S.screen='setup';S.setupStep=1;S.connected=false;S.currentUser=null;closeModal();render()}
 
 // ==========================================================
@@ -1634,7 +1679,7 @@ async function _bulkComplete(titulo,fecha){var items=S.pedidos.filter(function(p
 async function _bulkArchive(titulo,fecha){var items=S.pedidos.filter(function(p){return p.titulo===titulo&&p.fecha===fecha&&p.estado!=='Archivado'});await Promise.allSettled(items.map(function(p){return Sheets.deleteRow('📋 Pedidos',p._row).then(function(){return Sheets.append('📋 Pedidos',[p.id,p.fecha,p.hora,p.titulo,p.producto,p.cantidad,p.unidad,p.precioRef,p.subtotal,p.creador,'Archivado'])})}));items.forEach(function(p){p.estado='Archivado'});logAction('Pedido archivado (bulk)',titulo,'archive')}
 async function _bulkDelete(titulo){var rows=[];S.pedidos.forEach(function(p){if(p.titulo===titulo)rows.push(p._row)});rows.sort(function(a,b){return b-a});await Promise.allSettled(rows.map(function(r){return Sheets.deleteRow('📋 Pedidos',r)}));S.pedidos=S.pedidos.filter(function(p){return p.titulo!==titulo});logAction('Pedido eliminado (bulk)',titulo,'delete')}
 
-(async function(){if(S.sheetId&&S.apiKey&&SCRIPT_URL){const su=localStorage.getItem('currentUser_compras');if(su){try{S.currentUser=JSON.parse(su);S.screen='main';S.connected=true;render();_initNav();await Sheets.loadUsers();const ok=S.usuarios.find(function(u){return u.usuario===S.currentUser.usuario});if(!ok){toast('Cuenta deshabilitada',1);logout();return}await Sheets.loadAll()}catch(e){S.screen='login';render()}}else{S.screen='login';S.connected=true;await Sheets.loadUsers();render()}}else{render()}})();
+(async function(){if((BACKEND==='supabase'&&SUPA_URL&&SUPA_KEY)||(S.sheetId&&S.apiKey&&SCRIPT_URL)){const su=localStorage.getItem('currentUser_compras');if(su){try{S.currentUser=JSON.parse(su);S.screen='main';S.connected=true;render();_initNav();await Sheets.loadUsers();const ok=S.usuarios.find(function(u){return u.usuario===S.currentUser.usuario});if(!ok){toast('Cuenta deshabilitada',1);logout();return}await Sheets.loadAll()}catch(e){S.screen='login';render()}}else{S.screen='login';S.connected=true;await Sheets.loadUsers();render()}}else{render()}})();
 
 
 function _rptSrchContent(compras,prodSorted,pq){

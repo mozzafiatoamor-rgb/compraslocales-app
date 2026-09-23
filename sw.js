@@ -1,6 +1,6 @@
 // Service Worker - Mozzafiato Compras
-const CACHE = 'mozzafiato-v3';
-const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'mozzafiato-v4';
+const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png', './vendor/supabase.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -26,7 +26,7 @@ self.addEventListener('fetch', e => {
   const url = e.request.url;
 
   // Peticiones al Script URL o googleapis siempre a red directa
-  if (url.includes('script.google.com') || url.includes('googleapis.com')) {
+  if (url.includes('script.google.com') || url.includes('googleapis.com') || url.includes('supabase.co')) {
     return;
   }
 
