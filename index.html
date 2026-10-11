@@ -413,7 +413,7 @@ const Sheets={
     var rawCounts={compras:cp.length,catalogo:c.length,pedidos:pd.length,fondos:fd.length,bitacora:bt.length,proveedores:pv.length};
     var limValues={compras:LIM.compras-1,catalogo:LIM.catalogo-1,pedidos:LIM.pedidos-1,fondos:LIM.fondos-1,bitacora:LIM.bitacora-1,proveedores:LIM.proveedores-1};
     var nombres={compras:'Compras',catalogo:'Cat\u00e1logo',pedidos:'Pedidos',fondos:'Fondos',bitacora:'Bit\u00e1cora',proveedores:'Proveedores'};
-    Object.keys(rawCounts).forEach(function(k){var n=rawCounts[k];var lim=limValues[k];var pct=Math.round(n/lim*100);if(pct>=85){S.sheetAlerts.push({sheet:nombres[k],registros:n,limite:lim,pct:pct,critico:pct>=100})}});
+    if(BACKEND!=='supabase')Object.keys(rawCounts).forEach(function(k){var n=rawCounts[k];var lim=limValues[k];var pct=Math.round(n/lim*100);if(pct>=85){S.sheetAlerts.push({sheet:nombres[k],registros:n,limite:lim,pct:pct,critico:pct>=100})}});
     S.connected=true;try{var cfgRows=await this.read('\u2699\ufe0f Config','A2:B20');if(cfgRows&&cfgRows.length){var cfgLast=cfgRows.filter(function(r){return r[0]==='permisos'&&r[1]}).pop();if(cfgLast){var parsed=JSON.parse(cfgLast[1]);Object.keys(parsed).forEach(function(_r){S.permisos[_r]=Object.assign({},S.permisos[_r]||{},parsed[_r]);});localStorage.setItem('permisos_mzf',cfgLast[1]);}}}catch(_ce){var _lp=localStorage.getItem('permisos_mzf');if(_lp)try{(function(_pp){Object.keys(_pp).forEach(function(_r){S.permisos[_r]=Object.assign({},S.permisos[_r]||{},_pp[_r]);});})(JSON.parse(_lp))}catch(_){}}}catch(e){console.error(e);toast('Error al cargar',1);S.connected=false}S.loading=false;hideWorking();render();SyncQueue.process()}
 };
 
