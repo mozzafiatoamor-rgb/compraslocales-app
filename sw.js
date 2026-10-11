@@ -1,5 +1,5 @@
 // Service Worker - Mozzafiato Compras
-const CACHE = 'mozzafiato-v5';
+const CACHE = 'mozzafiato-v6';
 const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png', './vendor/supabase.js'];
 
 self.addEventListener('install', e => {
@@ -34,7 +34,7 @@ self.addEventListener('fetch', e => {
   // Si falla (sin conexión), usa el cache como respaldo
   if (url.endsWith('/') || url.includes('index.html') || e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-store' })
         .then(res => {
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
