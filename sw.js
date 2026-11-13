@@ -1,5 +1,5 @@
 // Service Worker - Mozzafiato Compras
-const CACHE = 'mozzafiato-v6';
+const CACHE = 'mozzafiato-v7';
 const STATIC = ['./manifest.json', './icon-192.png', './icon-512.png', './vendor/supabase.js'];
 
 self.addEventListener('install', e => {
